@@ -103,8 +103,7 @@ class MQTTMessageHandler:
             # Actualizar última conexión del dispositivo
             device.update_last_connection()
             
-            logger.info(
-                f"✓ Telemetría guardada: {device.name} "
+            logger.info(f"[OK] Telemetría guardada: {device.name} "
                 f"(ID: {telemetry.id}, Métricas: {len(data)})"
             )
             
@@ -146,7 +145,7 @@ class MQTTMessageHandler:
                 device.status = new_status
                 device.save(update_fields=['status'])
                 
-                logger.info(f"✓ Estado actualizado: {device.name} → {new_status}")
+                logger.info(f"[OK] Estado actualizado: {device.name} → {new_status}")
             
             # Actualizar última conexión
             device.update_last_connection()

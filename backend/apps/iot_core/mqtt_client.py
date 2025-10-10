@@ -119,7 +119,7 @@ class MQTTClient:
             time.sleep(2)
             
             if self.connected:
-                logger.info("✓ Conexión MQTT establecida exitosamente")
+                logger.info("[OK] Conexión MQTT establecida exitosamente")
                 return True
             else:
                 logger.warning("Conexión MQTT iniciada pero no confirmada")
@@ -144,7 +144,7 @@ class MQTTClient:
                 self._client.loop_stop()
                 self._client.disconnect()
                 self.connected = False
-                logger.info("✓ Desconectado del broker MQTT")
+                logger.info("[OK] Desconectado del broker MQTT")
                 return True
             return False
         except Exception as e:
@@ -166,7 +166,7 @@ class MQTTClient:
         """
         if rc == 0:
             self.connected = True
-            logger.info("✓ Conectado exitosamente al broker MQTT")
+            logger.info("[OK] Conectado exitosamente al broker MQTT")
             
             # Suscribirse a todos los topics necesarios
             topics = [
@@ -178,7 +178,7 @@ class MQTTClient:
             for topic, qos in topics:
                 result = client.subscribe(topic, qos)
                 if result[0] == mqtt.MQTT_ERR_SUCCESS:
-                    logger.info(f"✓ Suscrito a topic: {topic} (QoS {qos})")
+                    logger.info(f"[OK] Suscrito a topic: {topic} (QoS {qos})")
                 else:
                     logger.error(f"✗ Error suscribiéndose a topic: {topic}")
             
