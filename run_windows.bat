@@ -15,9 +15,9 @@ if "%ERRORLEVEL%"=="1" (
     timeout /t 2 /nobreak > NUL
 )
 
-REM Iniciar backend con Django runserver
-echo [+] Iniciando backend con Django...
-start cmd /k "call venv\Scripts\activate.bat && cd backend && python manage.py runserver 8000"
+REM Iniciar backend con Daphne
+echo [+] Iniciando backend con Daphne...
+start cmd /k "call venv\Scripts\activate.bat && cd backend && python -m daphne -b 0.0.0.0 -p 8000 config.asgi:application"
 
 REM Esperar a que el backend esté listo
 echo [+] Esperando a que el backend esté listo...
