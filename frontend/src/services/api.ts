@@ -25,6 +25,11 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
+// Log para verificar la URL del API (solo en desarrollo)
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔗 API URL:', API_URL);
+}
+
 // Crear instancia de Axios
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
