@@ -1,8 +1,5 @@
 """
 Configuración de URLs para el proyecto Plataforma IoT.
-
-La lista `urlpatterns` enruta URLs a vistas. Para más información ver:
-    https://docs.djangoproject.com/en/5.0/topics/http/urls/
 """
 from django.contrib import admin
 from django.urls import path, include
@@ -13,10 +10,7 @@ from django.http import JsonResponse
 
 
 def health_check(request):
-    """
-    Endpoint de health check para verificar que el servicio está funcionando.
-    Usado por Docker health checks y monitoreo.
-    """
+    """Endpoint de health check para verificar que el servicio está funcionando."""
     return JsonResponse({
         'status': 'healthy',
         'service': 'IoT Platform Backend',
@@ -24,7 +18,18 @@ def health_check(request):
     })
 
 
+def root_view(request):
+    """Vista principal para Render y pruebas de disponibilidad."""
+    return JsonResponse({
+        'message': '🚀 IoT Platform API funcionando correctamente',
+        'docs': '/api/health/'
+    })
+
+
 urlpatterns = [
+    # Ruta raíz (Render verifica esta)
+    path('', root_view, name='root'),
+
     # Admin de Django
     path('admin/', admin.site.urls),
     
