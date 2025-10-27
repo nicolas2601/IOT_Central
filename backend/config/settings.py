@@ -425,6 +425,18 @@ else:
         '127.0.0.1',
         'localhost',
     ]
+# Seguridad en producción
+if not DEBUG:
+    ALLOWED_HOSTS = ['iot-central.onrender.com', 'localhost', '127.0.0.1']
+
+    # Django debe confiar en Render para saber si la conexión es HTTPS
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    # Redirige a HTTPS solo si no está detrás de un proxy
+    SECURE_SSL_REDIRECT = True
+
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 
 # ============================================
