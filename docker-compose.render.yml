@@ -17,8 +17,8 @@ services:
   # Backend Django
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.render
+      context: .
+      dockerfile: Dockerfile
     container_name: iot_backend
     command: >
       sh -c "python manage.py migrate --noinput &&
