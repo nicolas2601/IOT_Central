@@ -34,4 +34,5 @@ RUN mkdir -p /app/staticfiles /app/media /app/logs
 EXPOSE $PORT
 
 # Comando por defecto
-CMD ["daphne", "-b", "0.0.0.0", "-p", "$PORT", "config.asgi:application"]
+CMD sh -c "daphne -b 0.0.0.0 -p ${PORT:-8000} config.asgi:application"
+
