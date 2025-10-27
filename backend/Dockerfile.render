@@ -34,4 +34,4 @@ RUN mkdir -p /app/staticfiles /app/media /app/logs
 EXPOSE $PORT
 
 # Comando por defecto
-CMD gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+CMD ["daphne", "-b", "0.0.0.0", "-p", "$PORT", "config.asgi:application"]
