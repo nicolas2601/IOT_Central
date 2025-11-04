@@ -18,8 +18,8 @@ import { Loader2, UserPlus } from "lucide-react";
 const registerSchema = z.object({
   username: z.string().min(3, "Usuario requerido"),
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Mínimo 6 caracteres"),
-  password_confirm: z.string().min(6, "Confirma tu contraseña"),
+  password: z.string().min(8, "Mínimo 8 caracteres"),
+  password_confirm: z.string().min(8, "Confirma tu contraseña"),
   first_name: z.string().min(1, "Nombre requerido"),
   last_name: z.string().min(1, "Apellido requerido"),
   company_name: z.string().optional(),
@@ -32,7 +32,7 @@ const registerSchema = z.object({
 type RegisterValues = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
-  const { register: registerUser, isLoading, error, clearError } = useAuth();
+  const { register: registerUser, isRegistering } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterValues>({
@@ -52,11 +52,21 @@ export function RegisterForm() {
   const onSubmit = async (values: RegisterValues) => {
     try {
       setSubmitting(true);
-      clearError();
+      // clearError(); // removed undefined function
       await registerUser(values);
       toast.success("Cuenta creada ✨", { description: "Redirigiendo al dashboard" });
     } catch (err: any) {
-      toast.error("Error al registrarse", { description: err?.response?.data?.message || error || "Intenta nuevamente" });
+      const backend = err?.response?.data;
+      let description = err?.message || "Intenta nuevamente";
+      if (backend && typeof backend === 'object') {
+        const parts: string[] = [];
+        for (const [key, val] of Object.entries(backend)) {
+          const msgs = Array.isArray(val) ? val.join(', ') : String(val);
+          parts.push(`${key}: ${msgs}`);
+        }
+        if (parts.length > 0) description = parts.join(' | ');
+      }
+      toast.error("Error al registrarse", { description });
     } finally {
       setSubmitting(false);
     }
@@ -137,41 +147,41 @@ export function RegisterForm() {
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
               />
             </div>
-            <div className="space-y-2 md:col-span-1">
-              <Label htmlFor="password" className="text-white/90">Contraseña</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                placeholder="••••••••" 
-                autoComplete="new-password" 
-                {...register("password")} 
-                aria-invalid={!!errors.password} 
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-              />
-              {errors.password && <p className="text-red-300 text-sm">{errors.password.message}</p>}
-            </div>
-            <div className="space-y-2 md:col-span-1">
-              <Label htmlFor="password_confirm" className="text-white/90">Confirmar contraseña</Label>
-              <Input 
-                id="password_confirm" 
-                type="password" 
-                placeholder="••••••••" 
-                autoComplete="new-password" 
-                {...register("password_confirm")} 
-                aria-invalid={!!errors.password_confirm} 
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-              />
-              {errors.password_confirm && <p className="text-red-300 text-sm">{errors.password_confirm.message}</p>}
-            </div>
+          <div className="space-y-2 md:col-span-1">
+            <Label htmlFor="password" className="text-white/90">Contraseña</Label>
+            <Input 
+              id="password" 
+              type="password" 
+              placeholder="••••••••" 
+              autoComplete="new-password" 
+              {...register("password")} 
+              aria-invalid={!!errors.password} 
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+            />
+            {errors.password && <p className="text-red-300 text-sm">{errors.password.message}</p>}
+          </div>
+          <div className="space-y-2 md:col-span-1">
+            <Label htmlFor="password_confirm" className="text-white/90">Confirmar contraseña</Label>
+            <Input 
+              id="password_confirm" 
+              type="password" 
+              placeholder="••••••••" 
+              autoComplete="new-password" 
+              {...register("password_confirm")} 
+              aria-invalid={!!errors.password_confirm} 
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+            />
+            {errors.password_confirm && <p className="text-red-300 text-sm">{errors.password_confirm.message}</p>}
+          </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3">
             <HoverScale>
               <Button
                 onClick={handleSubmit(onSubmit)}
-                disabled={isLoading || submitting}
+                disabled={isRegistering || submitting}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
               >
-                {isLoading || submitting ? (
+                {isRegistering || submitting ? (
                   <>
                     <Loader2 className="animate-spin" />
                     Registrando...

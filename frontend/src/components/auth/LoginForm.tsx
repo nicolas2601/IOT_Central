@@ -24,7 +24,7 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
-  const { login, isLoading, error, clearError } = useAuth();
+  const { login, isLoggingIn } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginValues>({
@@ -35,11 +35,10 @@ export function LoginForm() {
   const onSubmit = async (values: LoginValues) => {
     try {
       setSubmitting(true);
-      clearError();
-      await login(values.username, values.password);
+      await login({ username: values.username, password: values.password });
       toast.success("Bienvenido 👋", { description: "Acceso al dashboard" });
     } catch (err: any) {
-      toast.error("Error al iniciar sesión", { description: err?.response?.data?.message || error || "Revisa tus credenciales" });
+      toast.error("Error al iniciar sesión", { description: err?.response?.data?.message || err?.message || "Revisa tus credenciales" }); 
     } finally {
       setSubmitting(false);
     }
@@ -91,10 +90,10 @@ export function LoginForm() {
             <HoverScale>
               <Button
                 onClick={handleSubmit(onSubmit)}
-                disabled={isLoading || submitting}
+                disabled={isLoggingIn || submitting}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
               >
-                {isLoading || submitting ? (
+                {isLoggingIn || submitting ? (
                   <>
                     <Loader2 className="animate-spin" />
                     Ingresando...

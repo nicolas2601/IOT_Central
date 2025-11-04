@@ -30,8 +30,18 @@ export const useAuth = () => {
       toast.success('¡Cuenta creada!');
       router.push('/dashboard');
     },
-    onError: () => {
-      toast.error('Error al crear cuenta');
+    onError: (error: any) => {
+      const backend = error?.response?.data;
+      let description = 'Intenta nuevamente';
+      if (backend && typeof backend === 'object') {
+        const parts: string[] = [];
+        for (const [key, val] of Object.entries(backend)) {
+          const msgs = Array.isArray(val) ? val.join(', ') : String(val);
+          parts.push(`${key}: ${msgs}`);
+        }
+        if (parts.length > 0) description = parts.join(' | ');
+      }
+      toast.error('Error al crear cuenta', { description });
     },
   });
   
@@ -48,7 +58,7 @@ export const useAuth = () => {
     user,
     isAuthenticated,
     login: loginMutation.mutate,
-    register: registerMutation.mutate,
+    register: registerMutation.mutateAsync,
     logout: logoutMutation.mutate,
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
