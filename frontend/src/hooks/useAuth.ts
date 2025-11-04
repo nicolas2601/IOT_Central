@@ -1,80 +1,56 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/authStore';
+"use client";
 
-/**
- * Custom Hook para Autenticación
- * 
- * Proporciona acceso al estado de autenticación y funciones relacionadas.
- * Carga automáticamente el usuario al montar el componente.
- */
+import { useAuthStore } from '@/store/authStore';
+import { authService } from '@/services/authService';
+import { useMutation } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { LoginCredentials, RegisterData } from '@/types';
+import { toast } from 'sonner';
+
 export const useAuth = () => {
   const router = useRouter();
-  const {
-    user,
-    isAuthenticated,
-    isLoading,
-    error,
-    login,
-    register,
-    logout,
-    loadUser,
-    clearError,
-  } = useAuthStore();
-
-  // Cargar usuario al montar el hook
-  useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      loadUser();
-    }
-  }, [isAuthenticated, isLoading, loadUser]);
-
-  /**
-   * Función de login con redirección
-   */
-  const handleLogin = async (username: string, password: string) => {
-    try {
-      await login({ username, password });
+  const { user, isAuthenticated, setAuth, clearAuth } = useAuthStore();
+  
+  const loginMutation = useMutation({
+    mutationFn: (credentials: LoginCredentials) => authService.login(credentials),
+    onSuccess: (data) => {
+      setAuth(data.user, data.tokens);
+      toast.success('¡Bienvenido!');
       router.push('/dashboard');
-    } catch (error) {
-      console.error('Error en login:', error);
-      throw error;
-    }
-  };
-
-  /**
-   * Función de registro con redirección
-   */
-  const handleRegister = async (data: any) => {
-    try {
-      await register(data);
+    },
+    onError: () => {
+      toast.error('Credenciales incorrectas');
+    },
+  });
+  
+  const registerMutation = useMutation({
+    mutationFn: (data: RegisterData) => authService.register(data),
+    onSuccess: (data) => {
+      setAuth(data.user, data.tokens);
+      toast.success('¡Cuenta creada!');
       router.push('/dashboard');
-    } catch (error) {
-      console.error('Error en registro:', error);
-      throw error;
-    }
-  };
-
-  /**
-   * Función de logout con redirección
-   */
-  const handleLogout = async () => {
-    try {
-      await logout();
+    },
+    onError: () => {
+      toast.error('Error al crear cuenta');
+    },
+  });
+  
+  const logoutMutation = useMutation({
+    mutationFn: () => authService.logout(),
+    onSuccess: () => {
+      clearAuth();
       router.push('/login');
-    } catch (error) {
-      console.error('Error en logout:', error);
-    }
-  };
-
+      toast.success('Sesión cerrada');
+    },
+  });
+  
   return {
     user,
     isAuthenticated,
-    isLoading,
-    error,
-    login: handleLogin,
-    register: handleRegister,
-    logout: handleLogout,
-    clearError,
+    login: loginMutation.mutate,
+    register: registerMutation.mutate,
+    logout: logoutMutation.mutate,
+    isLoggingIn: loginMutation.isPending,
+    isRegistering: registerMutation.isPending,
   };
 };
