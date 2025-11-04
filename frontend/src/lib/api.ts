@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://iot-central.onrender.com/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -37,7 +37,7 @@ api.interceptors.response.use(
           const refreshToken = localStorage.getItem('refresh_token');
           if (!refreshToken) throw new Error('No refresh token');
           
-          const response = await axios.post(`${API_URL}/auth/token/refresh/`, {
+          const response = await axios.post(`${API_URL}/auth/refresh/`, {
             refresh: refreshToken,
           });
           
