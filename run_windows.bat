@@ -25,7 +25,7 @@ timeout /t 5 /nobreak > NUL
 
 REM Iniciar simulador
 echo [+] Iniciando simulador de dispositivos...
-start cmd /k "call venv\Scripts\activate.bat && cd simulador && python device_simulator.py --device-id sim001 --device-type sensor --broker localhost --port 1883 --interval 5"
+start cmd /k "call venv\Scripts\activate.bat && cd simulador && python device_simulator.py --device-id 97385ba9-254c-4dab-9470-477f20785e02 --device-type sensor --broker localhost --port 1883 --interval 15"
 
 echo.
 echo ========================================

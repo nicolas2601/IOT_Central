@@ -1,4 +1,5 @@
 import { RegisterForm } from '@/components/auth/RegisterForm';
+import Aurora from '@/components/animations/Aurora';
 import { Cpu } from 'lucide-react';
 
 /**
@@ -9,28 +10,41 @@ import { Cpu } from 'lucide-react';
  */
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4">
-      <div className="w-full max-w-2xl space-y-8">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Aurora Background (igual que Login) */}
+      <Aurora 
+        colorStops={["#3A29FF", "#FF94B4", "#FF3232"]}
+        blend={0.5}
+        amplitude={1.0}
+        speed={0.5}
+      />
+      {/* Overlay para mejorar legibilidad */}
+      <div className="absolute inset-0 bg-black/20 z-0" />
+
+      {/* Contenido */}
+      <div className="relative z-10 w-full max-w-md space-y-8">
         {/* Logo y Título */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
           <div className="flex justify-center">
-            <div className="bg-blue-600 p-3 rounded-2xl shadow-lg">
+            <div className="bg-blue-600/90 backdrop-blur-sm p-3 rounded-2xl shadow-lg">
               <Cpu className="h-12 w-12 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Únete a Plataforma IoT
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+            Plataforma IoT
           </h1>
-          <p className="text-gray-600">
-            Crea tu cuenta y comienza a gestionar tus dispositivos IoT
+          <p className="text-white/80 drop-shadow">
+            Gestiona tus dispositivos IoT de forma inteligente
           </p>
         </div>
 
         {/* Formulario de Registro */}
-        <RegisterForm />
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/20">
+          <RegisterForm />
+        </div>
 
         {/* Footer */}
-        <div className="text-center text-sm text-gray-500">
+        <div className="text-center text-sm text-white/60">
           <p>© 2025 Plataforma IoT. Todos los derechos reservados.</p>
         </div>
       </div>
