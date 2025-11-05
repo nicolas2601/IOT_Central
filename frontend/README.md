@@ -258,3 +258,8 @@ Verifica que:
 1. El backend esté corriendo en el puerto 8000
 2. Las variables de entorno estén correctas
 3. CORS esté configurado en el backend
+
+
+
+empezaremos el desarrollo directamente desde sus otras ramas pero yo en la frontend 
+

@@ -23,7 +23,12 @@ import type {
  * Incluye interceptores para autenticación JWT
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://iot-central.onrender.com/api';
+
+// Log para verificar la URL del API (solo en desarrollo)
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔗 API URL:', API_URL);
+}
 
 // Crear instancia de Axios
 const apiClient: AxiosInstance = axios.create({

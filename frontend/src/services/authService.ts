@@ -9,7 +9,9 @@ export const authService = {
   
   async login(credentials: LoginCredentials): Promise<{ user: User; tokens: AuthTokens }> {
     const response = await api.post('/auth/login/', credentials);
-    return response.data;
+    const data = response.data as any;
+    const tokens: AuthTokens = data.tokens ?? { access: data.access, refresh: data.refresh };
+    return { user: data.user, tokens };
   },
   
   async logout(): Promise<void> {
