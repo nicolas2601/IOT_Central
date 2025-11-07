@@ -8,6 +8,8 @@ Define las vistas para:
 - Gestión de alertas
 - Dashboard y estadísticas
 """
+# backend/apps/iot_core/views.py
+from rest_framework.decorators import api_view
 from rest_framework import viewsets, generics, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -530,3 +532,26 @@ class DashboardStatsView(APIView):
             'active_alerts': active_alerts,
             'timestamp': timezone.now()
         })
+@api_view(["POST"])
+def send_command(request):
+    """
+    Endpoint para recibir comandos desde el frontend.
+    Simula el envío del comando a un dispositivo IoT.
+    """
+    device_id = request.data.get("deviceId")
+    command = request.data.get("command")
+    params = request.data.get("params", {})
+
+    if not device_id or not command:
+        return Response(
+            {"error": "deviceId y command son requeridos."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # 🛰️ Aquí podrías integrar MQTT, WebSocket o Azure IoT.
+    print(f"[IOT_CORE] Comando recibido: {command} → {device_id} con {params}")
+
+    return Response(
+        {"status": "ok", "device_id": device_id, "command": command},
+        status=status.HTTP_200_OK,
+    )

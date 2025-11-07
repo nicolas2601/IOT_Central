@@ -44,4 +44,6 @@ urlpatterns = [
     path('dashboard/stats/', 
          views.DashboardStatsView.as_view(), 
          name='dashboard-stats'),
+         
+     path("commands/send/", views.send_command, name="send_command"),
 ]
