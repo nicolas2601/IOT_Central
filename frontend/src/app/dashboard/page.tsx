@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Cpu, Activity, Terminal, Bell, TrendingUp, TrendingDown } from 'lucide-react';
 import type { DashboardStats } from '@/types';
+import { RealtimeChart } from "@/components/telemetry/RealtimeChart";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -176,7 +177,10 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
-
+         {/* Gráfica en Tiempo Real */}
+      <div className="mt-6">
+        <RealtimeChart deviceId="sensor_001" token="mi_token_seguro" />
+      </div>
       {/* Actividad Reciente */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

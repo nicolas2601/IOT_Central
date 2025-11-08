@@ -10,22 +10,22 @@ interface ProtectedRouteProps {
 }
 
 /**
- * Componente que protege rutas que requieren autenticación
- * Redirige al login si el usuario no está autenticado
+ * Componente que protege rutas que requieren autenticación.
+ * Espera a que el store se hidrate antes de verificar el estado.
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, hasHydrated } = useAuthStore();
 
+  // Esperar a que Zustand termine de hidratar el estado persistido
   useEffect(() => {
-    // Si no está cargando y no está autenticado, redirigir al login
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login");
+    if (hasHydrated && !isAuthenticated) {
+      router.replace("/login");
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  // Mostrar loader mientras verifica la autenticación
-  if (isLoading) {
+  // Mientras no haya terminado de hidratar, mostrar loader
+  if (!hasHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -36,11 +36,11 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Si no está autenticado, no renderizar nada (la redirección se maneja en el useEffect)
+  // Si no está autenticado (una vez hidratado), no renderiza children
   if (!isAuthenticated) {
     return null;
   }
 
-  // Si está autenticado, renderizar los children
+  // Si está autenticado, renderiza el contenido protegido
   return <>{children}</>;
 }

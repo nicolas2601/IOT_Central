@@ -68,6 +68,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           onClick={onClose}
         />
       )}
+      
 
       {/* Sidebar */}
       <FadeInSection>

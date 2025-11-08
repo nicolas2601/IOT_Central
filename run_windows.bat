@@ -15,6 +15,9 @@ if "%ERRORLEVEL%"=="1" (
     timeout /t 2 /nobreak > NUL
 )
 
+REM Iniciar backend con Django runserver
+echo [+] Iniciando backend con Django...
+start cmd /k "call venv\Scripts\activate.bat && cd backend && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
 REM Iniciar backend con Daphne
 echo [+] Iniciando backend con Daphne...
 start cmd /k "call venv\Scripts\activate.bat && cd backend && python -m daphne -b 0.0.0.0 -p 8000 config.asgi:application"
@@ -25,6 +28,7 @@ timeout /t 5 /nobreak > NUL
 
 REM Iniciar simulador
 echo [+] Iniciando simulador de dispositivos...
+start cmd /k "call venv\Scripts\activate.bat && cd simulador && python device_simulator.py --device-id 97385ba9-254c-4dab-9470-477f20785e02 --device-type sensor --broker localhost --port 1883 --interval 240"
 start cmd /k "call venv\Scripts\activate.bat && cd simulador && python device_simulator.py --device-id 97385ba9-254c-4dab-9470-477f20785e02 --device-type sensor --broker localhost --port 1883 --interval 15"
 
 echo.
