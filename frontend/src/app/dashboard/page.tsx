@@ -6,14 +6,30 @@ import { dashboardApi } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Cpu, Activity, Terminal, Bell, TrendingUp, TrendingDown } from 'lucide-react';
+import Galaxy from '@/components/ui/Galaxy';
 import type { DashboardStats } from '@/types';
 import { RealtimeChart } from "@/components/telemetry/RealtimeChart";
+import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/authStore";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { useDevices } from "@/hooks/useDevices";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { devices } = useDevices();
+  const { accessToken } = useAuthStore();
+  const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const ws = selectedDevice && accessToken ? useWebSocket(selectedDevice, accessToken) : { telemetryData: [], status: 'disconnected' } as any;
+
+  // Inicializar dispositivo seleccionado
+  useEffect(() => {
+    if (!selectedDevice && devices && devices.length > 0) {
+      setSelectedDevice(devices[0].id);
+    }
+  }, [devices, selectedDevice]);
 
   // Cargar estadísticas del dashboard
   useEffect(() => {
@@ -71,20 +87,24 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header de Bienvenida */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          {getGreeting()}, {user?.first_name || user?.username}! 👋
-        </h1>
-        <p className="text-gray-600 mt-1">
-          Aquí está el resumen de tu plataforma IoT
-        </p>
+      {/* Hero con Galaxy */}
+      <div className="relative w-full h-56 rounded-2xl overflow-hidden">
+        <Galaxy />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/50 to-black/60" />
+        <div className="absolute inset-0 flex flex-col justify-center px-6">
+          <h1 className="text-3xl font-bold text-white">
+            {getGreeting()}, {user?.first_name || user?.username}! 👋
+          </h1>
+          <p className="text-white/80 mt-1">
+            Resumen de tu plataforma IoT
+          </p>
+        </div>
       </div>
 
       {/* Tarjetas de Estadísticas */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Total de Dispositivos */}
-        <Card>
+        <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total Dispositivos
@@ -93,14 +113,14 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.total_devices || 0}</div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-white/70 mt-1">
               {stats?.active_devices || 0} activos
             </p>
           </CardContent>
         </Card>
 
         {/* Dispositivos Online */}
-        <Card>
+        <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Dispositivos Online
@@ -108,10 +128,10 @@ export default function DashboardPage() {
             <Activity className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-green-400">
               {stats?.online_devices || 0}
             </div>
-            <div className="flex items-center text-xs text-gray-500 mt-1">
+            <div className="flex items-center text-xs text-white/70 mt-1">
               <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
               {stats?.offline_devices || 0} offline
             </div>
@@ -119,7 +139,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Telemetría Reciente */}
-        <Card>
+        <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Telemetría (24h)
@@ -130,14 +150,14 @@ export default function DashboardPage() {
             <div className="text-2xl font-bold">
               {stats?.recent_telemetry_24h || 0}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-white/70 mt-1">
               Registros recibidos
             </p>
           </CardContent>
         </Card>
 
         {/* Alertas Activas */}
-        <Card>
+        <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Alertas Activas
@@ -145,10 +165,10 @@ export default function DashboardPage() {
             <Bell className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
+            <div className="text-2xl font-bold text-orange-400">
               {stats?.active_alerts || 0}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-white/70 mt-1">
               Requieren atención
             </p>
           </CardContent>
@@ -156,7 +176,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Dispositivos por Tipo */}
-      <Card>
+      <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
         <CardHeader>
           <CardTitle>Dispositivos por Tipo</CardTitle>
           <CardDescription>
@@ -172,18 +192,57 @@ export default function DashboardPage() {
                 </Badge>
               ))
             ) : (
-              <p className="text-gray-500 text-sm">No hay dispositivos registrados</p>
+              <p className="text-white/70 text-sm">No hay dispositivos registrados</p>
             )}
           </div>
         </CardContent>
       </Card>
-         {/* Gráfica en Tiempo Real */}
-      <div className="mt-6">
-        <RealtimeChart deviceId="sensor_001" token="mi_token_seguro" />
-      </div>
+      {/* Selector de dispositivo y estado de conexión WS */}
+      {accessToken && devices && devices.length > 0 && (
+        <div className="mt-6 space-y-4">
+          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tiempo Real</CardTitle>
+              <Badge variant="secondary" className="text-xs">
+                {ws.status === 'connected' && 'WS: Conectado'}
+                {ws.status === 'connecting' && 'WS: Conectando...'}
+                {ws.status === 'error' && 'WS: Error'}
+                {ws.status === 'disconnected' && 'WS: Desconectado'}
+              </Badge>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <select
+                  className="w-full sm:w-72 bg-black/60 text-white border-white/10 rounded-md px-3 py-2"
+                  value={selectedDevice || ''}
+                  onChange={(e) => setSelectedDevice(e.target.value)}
+                >
+                  {devices.map((d: any) => (
+                    <option key={d.id} value={d.id}>{d.name || d.id}</option>
+                  ))}
+                </select>
+                <Button
+                  variant="secondary"
+                  className="bg-blue-600 hover:bg-blue-500 text-white"
+                  onClick={() => setSelectedDevice((prev) => prev)}
+                >
+                  Reconectar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Gráfica en Tiempo Real */}
+          {selectedDevice ? (
+            <RealtimeChart telemetryData={ws.telemetryData} />
+          ) : (
+            <div className="p-6 text-white/70 text-sm">Selecciona un dispositivo para ver datos en tiempo real.</div>
+          )}
+        </div>
+      )}
       {/* Actividad Reciente */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
           <CardHeader>
             <CardTitle>Actividad Reciente</CardTitle>
             <CardDescription>
@@ -193,37 +252,37 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <Activity className="h-4 w-4 text-blue-600" />
+                <div className="bg-blue-600/20 p-2 rounded-lg">
+                  <Activity className="h-4 w-4 text-blue-300" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Telemetría recibida</p>
-                  <p className="text-xs text-gray-500">Hace 2 minutos</p>
+                  <p className="text-xs text-white/70">Hace 2 minutos</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <div className="bg-green-100 p-2 rounded-lg">
-                  <Cpu className="h-4 w-4 text-green-600" />
+                <div className="bg-green-600/20 p-2 rounded-lg">
+                  <Cpu className="h-4 w-4 text-green-300" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Dispositivo conectado</p>
-                  <p className="text-xs text-gray-500">Hace 15 minutos</p>
+                  <p className="text-xs text-white/70">Hace 15 minutos</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <div className="bg-orange-100 p-2 rounded-lg">
-                  <Bell className="h-4 w-4 text-orange-600" />
+                <div className="bg-orange-600/20 p-2 rounded-lg">
+                  <Bell className="h-4 w-4 text-orange-300" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Nueva alerta generada</p>
-                  <p className="text-xs text-gray-500">Hace 1 hora</p>
+                  <p className="text-xs text-white/70">Hace 1 hora</p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
           <CardHeader>
             <CardTitle>Comandos Recientes</CardTitle>
             <CardDescription>
@@ -232,8 +291,8 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
-              <Terminal className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">
+              <Terminal className="h-12 w-12 text-white/70 mx-auto mb-2" />
+              <p className="text-sm text-white/70">
                 {stats?.recent_commands_24h || 0} comandos enviados en las últimas 24 horas
               </p>
             </div>

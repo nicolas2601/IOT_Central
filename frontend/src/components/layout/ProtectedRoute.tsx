@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { Loader2 } from "lucide-react";
@@ -16,10 +16,13 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const { isAuthenticated, hasHydrated } = useAuthStore();
+  const redirected = useRef(false);
 
   // Esperar a que Zustand termine de hidratar el estado persistido
   useEffect(() => {
-    if (hasHydrated && !isAuthenticated) {
+    // Ejecutar redirección solo una vez para evitar múltiples abortos de navegación
+    if (hasHydrated && !isAuthenticated && !redirected.current) {
+      redirected.current = true;
       router.replace("/login");
     }
   }, [hasHydrated, isAuthenticated, router]);

@@ -26,7 +26,7 @@ export default function DashboardLayout({
 
   return (
     <ProtectedRoute>
-      <div className="flex h-screen overflow-hidden bg-gray-50">
+      <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#0B0F20] via-[#0B0F20] to-[#1B1445]">
         {/* Sidebar */}
         <Sidebar
           isOpen={sidebarOpen}

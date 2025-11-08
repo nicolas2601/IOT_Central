@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Send, Terminal } from "lucide-react";
 import { useCommands } from "@/hooks/useCommands";
+import { openErrorModal } from "@/store/errorStore";
 
 interface CommandPanelProps {
   deviceId: string;
@@ -28,6 +29,8 @@ export const CommandPanel = ({ deviceId }: CommandPanelProps) => {
       setCommand("");
     } catch (err) {
       console.error("Error enviando comando:", err);
+      const description = (err as any)?.response?.data?.message || (err as any)?.message || "Intenta nuevamente";
+      openErrorModal("Error al enviar comando", description);
     }
   };
 

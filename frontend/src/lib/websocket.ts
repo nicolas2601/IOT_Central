@@ -2,6 +2,7 @@ class WebSocketClient {
   private ws: WebSocket | null = null;
   private url: string;
   private listeners: Map<string, Set<Function>> = new Map();
+  private status: 'disconnected' | 'connecting' | 'connected' | 'error' = 'disconnected';
 
   constructor(baseUrl: string) {
     this.url = baseUrl;
@@ -10,6 +11,8 @@ class WebSocketClient {
   connect(deviceId: string, token: string) {
     const wsUrl = `${this.url}/telemetry/${deviceId}/?token=${token}`;
     this.ws = new WebSocket(wsUrl);
+    this.status = 'connecting';
+    this.emit('status', this.status);
 
     this.ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -18,11 +21,20 @@ class WebSocketClient {
 
     this.ws.onerror = (error) => {
       console.error("WebSocket error:", error);
+      this.status = 'error';
+      this.emit('status', this.status);
     };
 
     this.ws.onclose = () => {
       console.warn("WebSocket desconectado. Reintentando...");
+      this.status = 'disconnected';
+      this.emit('status', this.status);
       setTimeout(() => this.connect(deviceId, token), 3000);
+    };
+
+    this.ws.onopen = () => {
+      this.status = 'connected';
+      this.emit('status', this.status);
     };
   }
 
@@ -42,6 +54,8 @@ class WebSocketClient {
   disconnect() {
     this.ws?.close();
     this.ws = null;
+    this.status = 'disconnected';
+    this.emit('status', this.status);
   }
 }
 

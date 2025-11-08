@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import Link from "next/link";
+import { openErrorModal } from "@/store/errorStore";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,7 +68,7 @@ export function RegisterForm() {
         }
         if (parts.length > 0) description = parts.join(' | ');
       }
-      toast.error("Error al registrarse", { description });
+      openErrorModal("Error al registrarse", description);
     } finally {
       setSubmitting(false);
     }
@@ -194,6 +196,9 @@ export function RegisterForm() {
                 )}
               </Button>
             </HoverScale>
+            <Link href="/login" className="text-xs underline text-white/80 hover:text-white text-center">
+              Volver a Iniciar Sesión
+            </Link>
           </CardFooter>
         </Card>
       </SpotlightCard>

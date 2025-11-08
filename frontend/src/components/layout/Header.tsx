@@ -14,8 +14,10 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { Menu, Bell, LogOut, User, Settings, ChevronDown } from "lucide-react";
+import { Menu, LogOut, User, Settings, ChevronDown } from "lucide-react";
 import { FadeInSection } from "@/components/animations/FadeInSection";
+import NotificationsMenu from "@/components/notifications/NotificationsMenu";
+import { useRouter } from "next/navigation";
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -25,6 +27,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   const { user } = useAuthStore();
   const { logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const router = useRouter();
 
   const handleLogout = async () => {
     try {
@@ -68,11 +71,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
         {/* Menú de usuario */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive"></span>
-            <span className="sr-only">Notificaciones</span>
-          </Button>
+          <NotificationsMenu />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -90,11 +89,11 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/dashboard/settings#perfil')}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Perfil</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/dashboard/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Configuración</span>
               </DropdownMenuItem>

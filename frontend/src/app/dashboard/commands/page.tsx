@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Terminal, Send, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/authStore";
+import { openErrorModal } from "@/store/errorStore";
 
 /**
  * Página de comandos IoT mejorada (Día 4 - Gabriela)
@@ -22,17 +23,21 @@ export default function CommandsPage() {
   const { user } = useAuthStore();
 
   const handleSend = async () => {
-    if (!deviceId || !command) return alert("⚠️ Completa todos los campos");
+    if (!deviceId || !command) {
+      openErrorModal("Campos incompletos", "Completa el ID del dispositivo y el comando");
+      return;
+    }
     sendCommand.mutate(
       { deviceId, command },
       {
         onSuccess: () => {
-          alert(`✅ Comando enviado correctamente a ${deviceId}`);
+          // Éxito: limpiar el comando y refrescar sin modal (solo errores usan modal)
           setCommand("");
           refetch();
         },
         onError: (err: any) => {
-          alert(`❌ Error al enviar comando: ${err.message}`);
+          const description = err?.response?.data?.message || err?.message || "Intenta nuevamente";
+          openErrorModal("Error al enviar comando", description);
         },
       }
     );
@@ -53,9 +58,9 @@ export default function CommandsPage() {
       </div>
 
       {/* Usuario autenticado */}
-      <Card className="bg-primary/5 border border-primary/10">
+<Card className="bg-black/40 border-white/10 backdrop-blur-xl">
         <CardHeader>
-          <CardTitle className="text-primary">Sesión actual</CardTitle>
+<CardTitle className="text-white">Sesión actual</CardTitle>
           <CardDescription>
             Información del usuario autenticado
           </CardDescription>
@@ -69,7 +74,7 @@ export default function CommandsPage() {
       </Card>
 
       {/* Envío de comandos */}
-      <Card className="shadow-md border border-border hover:shadow-lg transition-all duration-300">
+<Card className="bg-black/40 border-white/10 backdrop-blur-xl hover:shadow-lg transition-all duration-300">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Send className="h-5 w-5 text-primary" />
@@ -112,7 +117,7 @@ export default function CommandsPage() {
       </Card>
 
       {/* Historial de comandos */}
-      <Card className="shadow-sm border">
+<Card className="bg-black/40 border-white/10 backdrop-blur-xl">
         <CardHeader className="flex flex-row justify-between items-center">
           <div>
             <CardTitle>Historial de Comandos</CardTitle>

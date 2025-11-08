@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
+// Eliminamos toasts; usaremos un panel centrado de feedback
 import { useAuth } from "@/hooks/useAuth";
+import { openErrorModal } from "@/store/errorStore";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +26,10 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
+  const router = useRouter();
   const { login, isLoggingIn } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<null | { type: 'success' | 'error'; message: string; description?: string }>(null);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -35,10 +39,15 @@ export function LoginForm() {
   const onSubmit = async (values: LoginValues) => {
     try {
       setSubmitting(true);
-      await login({ username: values.username, password: values.password });
-      toast.success("Bienvenido 👋", { description: "Acceso al dashboard" });
+      const result = await login({ username: values.username, password: values.password });
+      // Si el login se resolvió correctamente, mostramos panel de éxito
+      if (result) {
+        setFeedback({ type: 'success', message: 'Login exitoso', description: 'Acceso al dashboard' });
+      }
     } catch (err: any) {
-      toast.error("Error al iniciar sesión", { description: err?.response?.data?.message || err?.message || "Revisa tus credenciales" }); 
+      // Usar el modal global de errores para mantener consistencia visual
+      const description = err?.response?.data?.message || err?.message || 'Revisa tus credenciales';
+      openErrorModal('Error al iniciar sesión', description);
     } finally {
       setSubmitting(false);
     }
@@ -50,7 +59,7 @@ export function LoginForm() {
         className="shadow-xl border-white/20 bg-black/40 backdrop-blur-md"
         spotlightColor="rgba(58, 41, 255, 0.3)"
       >
-        <Card className="border-0 bg-transparent shadow-none">
+        <Card className="border-0 bg-transparent shadow-none relative">
           <CardHeader>
             <CardTitle className="text-2xl text-white">Iniciar sesión</CardTitle>
             <CardDescription className="text-white/80">Accede a tu plataforma IoT</CardDescription>
@@ -111,6 +120,32 @@ export function LoginForm() {
               <Link href="/register" className="text-blue-300 hover:text-blue-200 hover:underline">Regístrate</Link>
             </p>
           </CardFooter>
+
+          {feedback && feedback.type === 'success' && (
+            <>
+              {/* Overlay de fondo oscuro */}
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30" />
+              {/* Panel centrado */}
+              <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
+                <div className={`min-w-[280px] max-w-sm rounded-xl border p-4 shadow-2xl backdrop-blur-md ${feedback.type === 'success' ? 'bg-green-600/30 border-green-400/60' : 'bg-red-600/30 border-red-400/60'}`}>
+                  <p className={`text-center font-semibold ${feedback.type === 'success' ? 'text-green-200' : 'text-red-200'}`}>{feedback.message}</p>
+                  {feedback.description && (
+                    <p className="mt-1 text-center text-white/80 text-sm">{feedback.description}</p>
+                  )}
+                  <div className="mt-3 flex justify-center gap-3">
+                    {feedback.type === 'success' ? (
+                      <Button
+                        onClick={() => { setFeedback(null); router.push('/dashboard'); }}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        Aceptar
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </Card>
       </SpotlightCard>
     </AnimatedCard>

@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { openErrorModal } from '@/store/errorStore';
 import type {
   User,
   LoginCredentials,
@@ -58,6 +59,14 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // Errores de red (backend caído, conexión rechazada, DNS, CORS)
+    const isNetworkError = !error.response || error.code === 'ERR_NETWORK';
+    if (isNetworkError) {
+      const message = `No se pudo conectar con el servidor API (${API_URL}). Verifica que esté en ejecución o configura NEXT_PUBLIC_API_URL.`;
+      openErrorModal('Conexión rechazada', message);
+      return Promise.reject(error);
+    }
 
     // Si el error es 401 y no hemos intentado refrescar el token
     if (error.response?.status === 401 && !originalRequest._retry) {

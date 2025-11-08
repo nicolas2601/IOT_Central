@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import ErrorModal from "@/components/common/ErrorModal";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,9 +19,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`dark ${inter.className}`}>
         <Providers>
           {children}
+          {/* Modal global de errores */}
+          <ErrorModal />
         </Providers>
       </body>
     </html>

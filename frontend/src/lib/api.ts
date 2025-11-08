@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { openErrorModal } from '@/store/errorStore';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -54,6 +55,26 @@ api.interceptors.response.use(
       }
     }
     
+    // Solo mostrar el modal para errores NO de red y distintos de 401
+    // (los de red no tienen response, 401 ya se maneja con refresh/redirect)
+    if (typeof window !== 'undefined' && error.response && error.response.status !== 401) {
+      const status = error.response.status;
+      const data: any = error.response.data || {};
+      const titleMap: Record<number, string> = {
+        400: 'Solicitud incorrecta',
+        403: 'Acceso denegado',
+        404: 'Recurso no encontrado',
+        500: 'Error del servidor',
+      };
+      const title = titleMap[status] || 'Error';
+      const message = data?.message || data?.detail || error.message || 'Ocurrió un error';
+      const details = typeof data === 'string' ? data : undefined;
+      try {
+        openErrorModal(title, message, details);
+      } catch (_) {
+        // evitar romper el flujo si el modal falla por cualquier razón
+      }
+    }
     return Promise.reject(error);
   }
 );

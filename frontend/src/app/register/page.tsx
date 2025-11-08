@@ -10,23 +10,23 @@ import { Cpu } from 'lucide-react';
  */
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Aurora Background (igual que Login) */}
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-[#0B0F20] via-[#0B0F20] to-[#1B1445]">
+      {/* Aurora Background (negro predominante con azul y morado) */}
       <Aurora 
-        colorStops={["#3A29FF", "#FF94B4", "#FF3232"]}
-        blend={0.5}
-        amplitude={1.0}
-        speed={0.5}
+        colorStops={["#0B0F20", "#4C1D95", "#1E3A8A"]}
+        blend={0.8}
+        amplitude={1.8}
+        speed={0.6}
       />
-      {/* Overlay para mejorar legibilidad */}
-      <div className="absolute inset-0 bg-black/20 z-0" />
+      {/* Overlay más oscuro para contraste */}
+      <div className="absolute inset-0 bg-black/40 z-0" />
 
       {/* Contenido */}
       <div className="relative z-10 w-full max-w-md space-y-8">
         {/* Logo y Título */}
         <div className="text-center space-y-3">
           <div className="flex justify-center">
-            <div className="bg-blue-600/90 backdrop-blur-sm p-3 rounded-2xl shadow-lg">
+            <div className="bg-gradient-to-br from-blue-600/80 via-purple-700/80 to-blue-800/80 backdrop-blur-sm p-3 rounded-2xl shadow-lg">
               <Cpu className="h-12 w-12 text-white" />
             </div>
           </div>
@@ -39,7 +39,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Formulario de Registro */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/20">
+        <div className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/15">
           <RegisterForm />
         </div>
 
