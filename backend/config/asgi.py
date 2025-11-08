@@ -19,34 +19,23 @@ from django.core.asgi import get_asgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 # Inicializar Django ASGI application
-application = get_asgi_application()
+django_application = get_asgi_application()
 
-# Configuración para Channels (comentado temporalmente para solucionar el error)
-"""
-# Solo descomentar cuando se haya configurado correctamente Channels
+# Configuración de Channels para habilitar WebSockets con autenticación JWT
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
 from channels.security.websocket import AllowedHostsOriginValidator
+from apps.iot_core.routing import websocket_urlpatterns
+from .channels_auth import JWTAuthMiddlewareStack
 
-# Importar el routing de WebSockets después de inicializar Django
-try:
-    from apps.iot_core.routing import websocket_urlpatterns
-    
-    # Configuración de la aplicación ASGI con Channels
-    application = ProtocolTypeRouter({
-        # Peticiones HTTP tradicionales
-        "http": application,
-        
-        # WebSocket connections
-        "websocket": AllowedHostsOriginValidator(
-            AuthMiddlewareStack(
-                URLRouter(
-                    websocket_urlpatterns
-                )
-            )
-        ),
-    })
-except ImportError:
-    # Si no se puede importar el routing, solo usar HTTP
-    pass
-"""
+# Configuración de la aplicación ASGI con soporte HTTP y WebSocket
+application = ProtocolTypeRouter({
+    # Peticiones HTTP tradicionales
+    "http": django_application,
+
+    # Conexiones WebSocket (con validación de host y JWT auth)
+    "websocket": AllowedHostsOriginValidator(
+        JWTAuthMiddlewareStack(
+            URLRouter(websocket_urlpatterns)
+        )
+    ),
+})

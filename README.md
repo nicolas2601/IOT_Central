@@ -68,6 +68,38 @@ frontend/src/
 
 ## 📅 PLAN DE TRABAJO (5 DÍAS)
 
+### 🧭 Resumen – Miguel (Día 2 al Día 4)
+
+- Día 2:
+  - Implementó la gestión de dispositivos, creando componentes para listar y administrar dispositivos.
+  - Añadió las rutas y navegación necesarias en el Sidebar.
+- Día 3:
+  - Desarrolló la lógica para WebSocket y telemetría en tiempo real, con validación de datos.
+  - Implementó un componente de prueba para recibir telemetría.
+- Día 4:
+  - Configuró el sistema de comandos IoT: envío, monitoreo y listado de comandos.
+
+> Estado: Integraciones funcionales en servicios, hooks y componentes base para dispositivos, telemetría y comandos.
+
+### 🗓️ DÍA 5: PULIDO Y UI – GABRIELA
+
+**Objetivo:** Consolidar la experiencia de usuario en el Dashboard y vistas principales, añadiendo visuales y micro-interacciones (React Bits), mejorar accesibilidad y responsividad, y finalizar las páginas faltantes.
+
+**Tareas:**
+- Integrar panel de gráficas en tiempo real en `/dashboard` con selector de dispositivo y estado de conexión.
+- Aplicar animaciones sutiles y fondos dinámicos (Aurora/Galaxy) en dashboard y layouts.
+- Añadir micro-interacciones (hover spotlight, fade/slide) y skeletons de carga en listas.
+- Completar UI de dispositivos: grid responsivo, modales (crear/editar), diálogo de borrado, y filtros básicos.
+- Unificar estilos de componentes (ShadCN) y ajustar Sidebar/Header con estados activos/hover.
+- Mejorar accesibilidad: roles ARIA, focus-visible, contraste y navegación por teclado.
+- Pruebas de UX: revisar onboarding y flujo login → dashboard → devices.
+- Revisión de performance: evitar renders innecesarios y memoizar componentes críticos.
+
+**Entregables:**
+- Dashboard final con gráficas en tiempo real y animaciones.
+- Vistas y componentes de dispositivos pulidos y coherentes.
+- Interacciones fluidas y accesibilidad mejorada.
+
 ### 🗓️ DÍA 1: FUNDAMENTOS Y AUTENTICACIÓN
 
 #### MIGUEL 
@@ -117,7 +149,7 @@ export interface Command {
   status: 'pending' | 'sent' | 'executed' | 'failed';
   sent_at: string;
   executed_at: string | null;
-  response: Record<string, any> | null;
+    response: Record<string, any> | null;
 }
 ```
 
@@ -217,6 +249,26 @@ export const authService = {
   },
 };
 ```
+
+---
+
+## 🔌 WebSockets y Entorno
+
+Para la gráfica de telemetría en tiempo real, el frontend se conecta vía WebSocket al backend (Django Channels).
+
+- Variable de entorno frontend: configura `NEXT_PUBLIC_WS_URL` con la base del endpoint de WebSockets.
+  - Desarrollo local: `NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws`
+  - Producción (ejemplo): `NEXT_PUBLIC_WS_URL=wss://iot-central.onrender.com/ws`
+- Autenticación: el cliente envía el JWT de acceso en la query del WebSocket (`?token=<ACCESS_TOKEN>`).
+  - Debes iniciar sesión para obtener `access` y guardarlo en `localStorage`.
+
+Ejemplo de URL:
+
+```
+ws://localhost:8000/ws/telemetry/<device_uuid>/?token=<ACCESS_TOKEN>
+```
+
+Backend: Channels está habilitado en `backend/config/asgi.py` y usa un middleware que valida el token JWT de la query y adjunta el usuario en `scope['user']`.
 
 4. **src/store/authStore.ts** - Zustand store
 ```typescript
