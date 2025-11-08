@@ -8,15 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Cpu, Activity, Terminal, Bell, TrendingUp, TrendingDown } from 'lucide-react';
 import type { DashboardStats } from '@/types';
 
-/**
- * Página Principal del Dashboard
- * 
- * Muestra un resumen general de la plataforma IoT:
- * - Estadísticas de dispositivos
- * - Actividad reciente
- * - Alertas activas
- * - Gráficas de telemetría
- */
 export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
