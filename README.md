@@ -258,7 +258,7 @@ Para la gráfica de telemetría en tiempo real, el frontend se conecta vía WebS
 
 - Variable de entorno frontend: configura `NEXT_PUBLIC_WS_URL` con la base del endpoint de WebSockets.
   - Desarrollo local: `NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws`
-  - Producción (ejemplo): `NEXT_PUBLIC_WS_URL=wss://iot-central.onrender.com/ws`
+  - Producción (ejemplo): `NEXT_PUBLIC_WS_URL=wss://localhost:8000/ws`
 - Autenticación: el cliente envía el JWT de acceso en la query del WebSocket (`?token=<ACCESS_TOKEN>`).
   - Debes iniciar sesión para obtener `access` y guardarlo en `localStorage`.
 

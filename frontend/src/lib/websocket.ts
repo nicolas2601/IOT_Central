@@ -16,7 +16,7 @@ class WebSocketClient {
     this.status = 'connecting';
     this.emit('status', this.status);
 
-    this.ws.onmessage = (event) => {
+    this.ws.onmessage = (event: MessageEvent) => {
       try {
         const payload = JSON.parse(event.data);
         if (payload?.type === "telemetry" && payload?.data) {
@@ -24,28 +24,28 @@ class WebSocketClient {
           this.emit("telemetry", payload.data);
         } else {
           // Ignorar otros tipos o formatos
-          console.debug("Mensaje WS ignorado", payload);
+          // En producción evitamos logs en consola; la UI muestra estado
         }
       } catch (e) {
-        console.error("WS message parsing error:", e);
+        // Emitir error de parseo sin usar consola
+        this.emit('error', { message: 'Error al parsear mensaje de WS' });
       }
     };
 
-    this.ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
+    this.ws.onerror = (event: Event) => {
       this.status = 'error';
       this.emit('status', this.status);
-      this.emit('error', { message: 'WebSocket error', detail: error });
+      // El evento de error de WebSocket no expone detalles útiles en la mayoría de navegadores
+      this.emit('error', { message: 'WebSocket error' });
     };
 
-    this.ws.onclose = (event) => {
+    this.ws.onclose = (event: CloseEvent) => {
       this.status = 'disconnected';
       this.emit('status', this.status);
       if (this.shouldReconnect) {
-        console.warn("WebSocket desconectado. Reintentando...", { code: event.code, reason: event.reason });
         setTimeout(() => this.connect(deviceId, token), 3000);
       } else {
-        console.info("WebSocket cerrado manualmente", { code: event.code, reason: event.reason });
+        // Cierre manual solicitado
       }
     };
 
