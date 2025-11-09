@@ -172,7 +172,11 @@ else:
     STATICFILES_DIRS = []
 
 # Configuración de WhiteNoise para servir archivos estáticos
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Usar CompressedStaticFilesStorage en lugar de Manifest para evitar errores en producción
+if DEBUG:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+else:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # Archivos de media (uploads de usuarios)
 MEDIA_URL = '/media/'

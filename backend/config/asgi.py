@@ -15,7 +15,6 @@ ASGI (Asynchronous Server Gateway Interface) permite manejar:
 import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
 from channels.security.websocket import AllowedHostsOriginValidator
 
 # Configurar el módulo de settings de Django
@@ -25,8 +24,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 # el AppRegistry esté poblado antes de importar código que pueda importar modelos ORM.
 django_asgi_app = get_asgi_application()
 
-# Importar el routing de WebSockets después de inicializar Django
+# Importar el routing y middleware de WebSockets después de inicializar Django
 from apps.iot_core.routing import websocket_urlpatterns
+from apps.iot_core.middleware import JWTAuthMiddleware
 
 
 # Configuración de la aplicación ASGI
@@ -34,9 +34,9 @@ application = ProtocolTypeRouter({
     # Peticiones HTTP tradicionales
     "http": django_asgi_app,
     
-    # WebSocket connections - AllowedHostsOriginValidator usa ALLOWED_HOSTS
+    # WebSocket connections con autenticación JWT
     "websocket": AllowedHostsOriginValidator(
-        AuthMiddlewareStack(
+        JWTAuthMiddleware(
             URLRouter(
                 websocket_urlpatterns
             )
