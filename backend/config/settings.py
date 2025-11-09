@@ -163,7 +163,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# Solo incluir STATICFILES_DIRS si el directorio existe
+import os
+if os.path.exists(BASE_DIR / 'static'):
+    STATICFILES_DIRS = [BASE_DIR / 'static']
+else:
+    STATICFILES_DIRS = []
 
 # Configuración de WhiteNoise para servir archivos estáticos
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -296,47 +302,26 @@ CORS_ALLOW_HEADERS = [
 # CONFIGURACIÓN DE CHANNELS (WebSockets)
 # ============================================
 
-# Usar in-memory channel layer para desarrollo sin Redis
+# Usar in-memory channel layer (sin Redis)
+# NOTA: En producción con un solo worker de Daphne, esto funciona correctamente
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer'
     },
 }
 
-# Si tienes Redis corriendo, descomenta esto:
-# CHANNEL_LAYERS = {
-#     'default': {
-#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-#         'CONFIG': {
-#             "hosts": [config('REDIS_URL', default='redis://localhost:6379/0')],
-#             "capacity": 1500,
-#             "expiry": 10,
-#         },
-#     },
-# }
-
 
 # ============================================
-# CONFIGURACIÓN DE REDIS (Cache)
+# CONFIGURACIÓN DE CACHE (Sin Redis)
 # ============================================
 
-# Usar cache en memoria para desarrollo sin Redis
+# Usar cache en memoria (sin Redis)
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'LOCATION': 'unique-snowflake',
     }
 }
-
-# Si tienes Redis corriendo, descomenta esto:
-# CACHES = {
-#     'default': {
-#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-#         'LOCATION': config('REDIS_URL', default='redis://localhost:6379/0'),
-#         'KEY_PREFIX': 'iot_platform',
-#         'TIMEOUT': 300,
-#     }
-# }
 
 
 # ============================================
@@ -427,26 +412,33 @@ else:
     ]
 # Seguridad en producción
 if not DEBUG:
-    ALLOWED_HOSTS = ['iot-central.onrender.com', 'localhost', '127.0.0.1']
+    # Permitir el dominio de Render y subdominios
+    ALLOWED_HOSTS = ['iot-central.onrender.com', '.onrender.com', 'localhost', '127.0.0.1']
 
     # Django debe confiar en Render para saber si la conexión es HTTPS
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-    # Redirige a HTTPS solo si no está detrás de un proxy
-    SECURE_SSL_REDIRECT = True
+    # NO redirigir a HTTPS porque Render maneja esto
+    SECURE_SSL_REDIRECT = False
 
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    
+    # Configuración adicional para WebSockets en producción
+    CSRF_COOKIE_HTTPONLY = False  # Permitir acceso desde JavaScript
+    CSRF_COOKIE_SAMESITE = 'Lax'  # Permitir cookies en requests cross-site
 
 
 # ============================================
 # CONFIGURACIÓN DE SESIONES
 # ============================================
 
-SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-SESSION_CACHE_ALIAS = 'default'
+# Usar sesiones en base de datos (más confiable sin Redis)
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400  # 24 horas
 SESSION_SAVE_EVERY_REQUEST = False
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 
 # ============================================
