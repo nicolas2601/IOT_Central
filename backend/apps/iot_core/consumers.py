@@ -31,13 +31,20 @@ class TelemetryConsumer(AsyncWebsocketConsumer):
         
         # Verificar autenticación
         user = self.scope.get('user')
+        
+        # Log de debugging
+        logger.info(f"🔌 Intento de conexión WebSocket - Device: {self.device_id}")
+        logger.info(f"👤 Usuario: {user}, Autenticado: {user.is_authenticated if user else False}")
+        
         if not user or not user.is_authenticated:
+            logger.warning(f"❌ WebSocket rechazado: usuario no autenticado para dispositivo {self.device_id}")
             await self.close()
             return
         
         # Verificar permisos del dispositivo
         has_permission = await self.check_device_permission(user, self.device_id)
         if not has_permission:
+            logger.warning(f"❌ WebSocket rechazado: usuario {user.username} sin permisos para dispositivo {self.device_id}")
             await self.close()
             return
         
@@ -48,7 +55,7 @@ class TelemetryConsumer(AsyncWebsocketConsumer):
         )
         
         await self.accept()
-        logger.info(f"WebSocket conectado: usuario {user.username} a dispositivo {self.device_id}")
+        logger.info(f"✅ WebSocket conectado: usuario {user.username} a dispositivo {self.device_id}")
         
         # Enviar mensaje de bienvenida
         await self.send(text_data=json.dumps({

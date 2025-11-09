@@ -22,7 +22,6 @@ Permite gestionar dispositivos IoT, recibir telemetría en tiempo real, visualiz
 - Django REST Framework para APIs REST
 - Django Channels para WebSockets
 - PostgreSQL 15 como base de datos
-- Redis para Channels y cache
 - djangorestframework-simplejwt para autenticación
 - django-cors-headers para CORS
 - paho-mqtt para cliente MQTT
@@ -40,7 +39,6 @@ Permite gestionar dispositivos IoT, recibir telemetría en tiempo real, visualiz
 ### Infraestructura
 - Docker + Docker Compose
 - PostgreSQL en contenedor
-- Redis en contenedor
 - Mosquitto MQTT en contenedor
 
 ## Flujo de Datos Completo
@@ -159,7 +157,6 @@ POSTGRES_USER=iotuser
 POSTGRES_PASSWORD=iotuser1234
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
-REDIS_URL=redis://redis:6379/0
 MQTT_BROKER_HOST=mosquitto
 MQTT_BROKER_PORT=1883
 ALLOWED_HOSTS=localhost,127.0.0.1

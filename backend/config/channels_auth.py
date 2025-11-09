@@ -11,8 +11,28 @@ Otherwise, it will default to `AnonymousUser`.
 from urllib.parse import parse_qs
 from channels.middleware import BaseMiddleware
 from channels.auth import AuthMiddlewareStack
+from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+@database_sync_to_async
+def get_user_from_token(token):
+    """
+    Valida el token JWT y retorna el usuario autenticado.
+    """
+    try:
+        auth = JWTAuthentication()
+        validated_token = auth.get_validated_token(token)
+        user = auth.get_user(validated_token)
+        logger.info(f"✓ Usuario autenticado vía JWT: {user.username}")
+        return user
+    except Exception as e:
+        logger.warning(f"✗ Token JWT inválido: {str(e)}")
+        return AnonymousUser()
 
 
 class JWTAuthMiddleware(BaseMiddleware):
@@ -26,12 +46,11 @@ class JWTAuthMiddleware(BaseMiddleware):
             token = params.get('token', [None])[0]
 
             if token:
-                auth = JWTAuthentication()
-                validated_token = auth.get_validated_token(token)
-                user = auth.get_user(validated_token)
-                scope['user'] = user
-        except Exception:
-            # Silently ignore invalid tokens; connection will be closed in consumer
+                scope['user'] = await get_user_from_token(token)
+            else:
+                logger.warning("✗ No se proporcionó token JWT en la conexión WebSocket")
+        except Exception as e:
+            logger.error(f"✗ Error procesando token JWT: {str(e)}")
             pass
 
         return await super().__call__(scope, receive, send)
