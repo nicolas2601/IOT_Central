@@ -20,8 +20,12 @@ class IotCoreConfig(AppConfig):
         
         # Inicializar cliente MQTT en un thread separado
         # Solo en el proceso principal (no en migraciones, etc)
+        # DESHABILITADO EN PRODUCCIÓN: Mosquitto es local, no está en Render
         import sys
-        if 'runserver' in sys.argv or 'daphne' in sys.argv[0]:
+        from django.conf import settings
+        
+        # Solo iniciar MQTT si DEBUG=True (desarrollo local)
+        if settings.DEBUG and ('runserver' in sys.argv or 'daphne' in sys.argv[0]):
             from .mqtt_client import MQTTClient
             import threading
             
