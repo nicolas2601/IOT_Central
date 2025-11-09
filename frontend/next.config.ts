@@ -19,8 +19,14 @@ const nextConfig: NextConfig = {
   
   // Variables de entorno públicas
   env: {
+    // API base: local por defecto
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
-    NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws',
+    // WS base: si no está definida, derivar desde API (http->ws, https->wss, /api->/ws)
+    NEXT_PUBLIC_WS_URL:
+      process.env.NEXT_PUBLIC_WS_URL ||
+      ((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api')
+        .replace(/^http/,'ws')
+        .replace(/\/api$/, '/ws')),
   },
 };
 

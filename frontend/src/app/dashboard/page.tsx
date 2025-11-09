@@ -22,7 +22,8 @@ export default function DashboardPage() {
   const { devices } = useDevices();
   const { accessToken } = useAuthStore();
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
-  const ws = selectedDevice && accessToken ? useWebSocket(selectedDevice, accessToken) : { telemetryData: [], status: 'disconnected' } as any;
+  // Llamar hooks siempre en el mismo orden: useWebSocket no debe ser condicional
+  const { telemetryData, status, wsClient, lastError } = useWebSocket(selectedDevice || "", accessToken || "");
 
   // Inicializar dispositivo seleccionado
   useEffect(() => {
@@ -204,10 +205,10 @@ export default function DashboardPage() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Tiempo Real</CardTitle>
               <Badge variant="secondary" className="text-xs">
-                {ws.status === 'connected' && 'WS: Conectado'}
-                {ws.status === 'connecting' && 'WS: Conectando...'}
-                {ws.status === 'error' && 'WS: Error'}
-                {ws.status === 'disconnected' && 'WS: Desconectado'}
+                {status === 'connected' && 'WS: Conectado'}
+                {status === 'connecting' && 'WS: Conectando...'}
+                {status === 'error' && 'WS: Error'}
+                {status === 'disconnected' && 'WS: Desconectado'}
               </Badge>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -224,17 +225,25 @@ export default function DashboardPage() {
                 <Button
                   variant="secondary"
                   className="bg-blue-600 hover:bg-blue-500 text-white"
-                  onClick={() => setSelectedDevice((prev) => prev)}
+                  onClick={() => {
+                    if (wsClient && selectedDevice && accessToken) {
+                      wsClient.disconnect();
+                      wsClient.connect(selectedDevice, accessToken);
+                    }
+                  }}
                 >
                   Reconectar
                 </Button>
+                {lastError && (
+                  <span className="text-xs text-red-400">{lastError}</span>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Gráfica en Tiempo Real */}
           {selectedDevice ? (
-            <RealtimeChart telemetryData={ws.telemetryData} />
+            <RealtimeChart telemetryData={telemetryData} />
           ) : (
             <div className="p-6 text-white/70 text-sm">Selecciona un dispositivo para ver datos en tiempo real.</div>
           )}

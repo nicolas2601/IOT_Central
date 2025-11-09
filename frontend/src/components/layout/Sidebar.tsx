@@ -124,7 +124,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <ul className="space-y-1 px-2">
               {navItems.map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href}>
+                  <Link href={item.href} prefetch={false}>
                     <Button
                       variant={pathname === item.href ? "default" : "ghost"}
                       className={cn(

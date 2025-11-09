@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RealtimeChart } from "@/components/telemetry/RealtimeChart";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { useDevices } from "@/hooks/useDevices";
 import { useAuthStore } from "@/store/authStore";
+import { telemetryApi } from "@/services/api";
 import { ShinyText } from "@/components/animations/ShinyText";
 import { TextType } from "@/components/animations/TextType";
 import { FadeContent } from "@/components/animations/FadeContent";
@@ -16,6 +18,26 @@ export default function TelemetryPage() {
   const { devices, isLoading } = useDevices();
   const { accessToken } = useAuthStore();
   const [selectedDevice, setSelectedDevice] = useState<string>("");
+  const { telemetryData, status, lastError } = useWebSocket(selectedDevice || "", accessToken || "");
+  const wsEnabled = !!accessToken && !!selectedDevice;
+  const [fallbackData, setFallbackData] = useState<any[]>([]);
+
+  // Fallback REST: si el WS no entrega muestras, mostrar la última telemetría
+  useEffect(() => {
+    const fetchLatest = async () => {
+      if (!wsEnabled || telemetryData.length > 0) return;
+      try {
+        const latest = await telemetryApi.getLatest(selectedDevice);
+        if (latest) {
+          setFallbackData([{ ...latest }]);
+        }
+      } catch (e) {
+        // Silencioso: la UI ya muestra errores WS
+        setFallbackData([]);
+      }
+    };
+    fetchLatest();
+  }, [wsEnabled, selectedDevice, telemetryData.length]);
 
   useEffect(() => {
     if (!selectedDevice && devices && devices.length > 0) {
@@ -75,10 +97,33 @@ export default function TelemetryPage() {
       <FadeContent>
         <StarBorder>
           <div className="bg-black/40 border-white/10 backdrop-blur-xl rounded-xl p-2">
-            {accessToken && selectedDevice ? (
-              <RealtimeChart deviceId={selectedDevice} token={accessToken} />
+            {/* Estado de WebSocket y diagnóstico */}
+            <div className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+              <span className={`px-2 py-0.5 rounded ${status === 'connected' ? 'bg-green-600/30 text-green-300' : status === 'connecting' ? 'bg-yellow-600/30 text-yellow-300' : status === 'error' ? 'bg-red-600/30 text-red-300' : 'bg-gray-600/30 text-gray-300'}`}>WS: {status}</span>
+              <span className="text-white/70">muestras: {telemetryData?.length || 0}</span>
+              {lastError && (
+                <span className="text-red-300 truncate max-w-[50ch]">Error: {lastError}</span>
+              )}
+              {process.env.NEXT_PUBLIC_WS_URL && (
+                <span className="text-white/50 truncate max-w-[60ch]">WS URL: {process.env.NEXT_PUBLIC_WS_URL}</span>
+              )}
+            </div>
+
+            {wsEnabled ? (
+              <RealtimeChart deviceId={selectedDevice} token={accessToken} telemetryData={telemetryData.length ? telemetryData : fallbackData} />
             ) : (
               <div className="p-6 text-white/70 text-sm">Configura tu sesión y selecciona un dispositivo para ver datos.</div>
+            )}
+
+            {wsEnabled && telemetryData && telemetryData.length > 0 && (
+              <div className="px-3 pb-3">
+                <details className="text-xs text-white/60">
+                  <summary>Ver última muestra recibida</summary>
+                  <pre className="mt-2 max-h-48 overflow-auto bg-black/50 border border-white/10 rounded p-2">
+                    {JSON.stringify(telemetryData[telemetryData.length - 1], null, 2)}
+                  </pre>
+                </details>
+              </div>
             )}
           </div>
         </StarBorder>
