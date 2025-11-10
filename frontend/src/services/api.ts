@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { useAuthStore } from '@/store/authStore';
 import { openErrorModal } from '@/store/errorStore';
 import type {
   User,
@@ -24,7 +25,8 @@ import type {
  * Incluye interceptores para autenticación JWT
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://iot-central.onrender.com/api';
+// Usar la URL del backend definida en entorno; por defecto, desarrollo local
+const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || 'http://localhost:8000/api');
 
 // Log para verificar la URL del API (solo en desarrollo)
 if (process.env.NODE_ENV === 'development') {
@@ -61,7 +63,12 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // Errores de red (backend caído, conexión rechazada, DNS, CORS)
-    const isNetworkError = !error.response || error.code === 'ERR_NETWORK';
+    // Evitar confundir cancelaciones de petición con errores de red reales
+    const code = error.code as string | undefined;
+    const msg = (error.message || '').toLowerCase();
+    const isCanceled = code === 'ERR_CANCELED' || code === 'ERR_ABORTED' || msg.includes('cancel') || msg.includes('abort');
+    // Consideramos error de red solo cuando Axios indica explícitamente ERR_NETWORK
+    const isNetworkError = code === 'ERR_NETWORK' && !isCanceled;
     if (isNetworkError) {
       const message = `No se pudo conectar con el servidor API (${API_URL}). Verifica que esté en ejecución o configura NEXT_PUBLIC_API_URL.`;
       openErrorModal('Conexión rechazada', message);
@@ -81,6 +88,10 @@ apiClient.interceptors.response.use(
 
           const { access } = response.data;
           localStorage.setItem('access_token', access);
+          // Mantener sincronizado el token en el store para que WebSocket use el actualizado
+          try {
+            useAuthStore.setState({ accessToken: access, isAuthenticated: true });
+          } catch (_) {}
 
           // Reintentar la petición original
           if (originalRequest.headers) {

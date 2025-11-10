@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { useAuthStore } from '@/store/authStore';
 import { openErrorModal } from '@/store/errorStore';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || 'http://localhost:8000/api');
 
 const api = axios.create({
   baseURL: API_URL,
@@ -29,6 +30,21 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    // Evitar confundir cancelaciones (navegación, cambio de ruta) con errores de red reales
+    const code = error.code as string | undefined;
+    const msg = (error.message || '').toLowerCase();
+    const isCanceled = code === 'ERR_CANCELED' || code === 'ERR_ABORTED' || msg.includes('cancel') || msg.includes('abort');
+    // Modal solo para fallos de red reales: ERR_NETWORK
+    const isNetworkError = code === 'ERR_NETWORK' && !isCanceled;
+
+    // Errores de red (backend caído, conexión rechazada, DNS, CORS)
+    if (isNetworkError) {
+      const message = `No se pudo conectar con el servidor API (${API_URL}). Verifica que esté en ejecución o configura NEXT_PUBLIC_API_URL.`;
+      try {
+        openErrorModal('Conexión rechazada', message);
+      } catch (_) {}
+      return Promise.reject(error);
+    }
     
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -44,6 +60,10 @@ api.interceptors.response.use(
           
           const { access } = response.data;
           localStorage.setItem('access_token', access);
+          // Mantener sincronizado el token en el store para que WebSocket use el actualizado
+          try {
+            useAuthStore.setState({ accessToken: access, isAuthenticated: true });
+          } catch (_) {}
           
           originalRequest.headers.Authorization = `Bearer ${access}`;
           return api(originalRequest);

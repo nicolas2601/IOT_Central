@@ -86,7 +86,10 @@ class DeviceListSerializer(serializers.ModelSerializer):
         model = Device
         fields = [
             'id', 'name', 'device_type', 'status', 'is_active',
-            'last_connection', 'is_online', 'location', 'created_at'
+            'last_connection', 'is_online', 'location', 'created_at',
+            # Añadimos descripción y metadatos para que el frontend pueda
+            # mostrar la misma descripción que en la vista de detalles
+            'description', 'metadata'
         ]
     
     def get_is_online(self, obj):

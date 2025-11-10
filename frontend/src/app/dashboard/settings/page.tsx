@@ -17,8 +17,6 @@ export default function SettingsPage() {
 
   // Local UI state (persistencia opcional futura)
   const [theme, setTheme] = useState<string>("system");
-  const [notifyEmail, setNotifyEmail] = useState<boolean>(false);
-  const [notifyInApp, setNotifyInApp] = useState<boolean>(true);
   const [telemetryRate, setTelemetryRate] = useState<number>(1000);
   const [smooth, setSmooth] = useState<boolean>(true);
   const [defaultDevice, setDefaultDevice] = useState<string>("");
@@ -52,19 +50,21 @@ export default function SettingsPage() {
                   <label className="text-sm text-white/70">Email</label>
                   <Input readOnly value={user?.email || "-"} className="bg-black/60 text-white border-white/10" />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="text-sm text-white/70">Access Token</label>
-                  <div className="flex gap-2">
-                    <Input readOnly value={accessToken ? `${accessToken.slice(0, 12)}…` : "No disponible"} className="bg-black/60 text-white border-white/10" />
-                    <Button
-                      variant="secondary"
-                      className="bg-blue-600 hover:bg-blue-500 text-white"
-                      onClick={() => navigator.clipboard.writeText(accessToken || "")}
-                    >
-                      Copiar
-                    </Button>
+                {user?.role === 'admin' && (
+                  <div className="md:col-span-2">
+                    <label className="text-sm text-white/70">Access Token</label>
+                    <div className="flex gap-2">
+                      <Input readOnly value={accessToken ? `${accessToken.slice(0, 12)}…` : "No disponible"} className="bg-black/60 text-white border-white/10" />
+                      <Button
+                        variant="secondary"
+                        className="bg-blue-600 hover:bg-blue-500 text-white"
+                        onClick={() => navigator.clipboard.writeText(accessToken || "")}
+                      >
+                        Copiar
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -94,14 +94,6 @@ export default function SettingsPage() {
                       <option value="system">Sistema</option>
                     </select>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <input id="notifyEmail" type="checkbox" checked={notifyEmail} onChange={(e) => setNotifyEmail(e.target.checked)} />
-                    <label htmlFor="notifyEmail" className="text-sm text-white/80">Notificaciones por correo</label>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input id="notifyInApp" type="checkbox" checked={notifyInApp} onChange={(e) => setNotifyInApp(e.target.checked)} />
-                    <label htmlFor="notifyInApp" className="text-sm text-white/80">Notificaciones en la app</label>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -110,29 +102,31 @@ export default function SettingsPage() {
       </FadeContent>
 
       {/* Conexión API/WS */}
-      <AnimatedContent delay={50}>
-        <ClickSpark>
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="text-white">Conexión</CardTitle>
-              <CardDescription>URLs actuales de API y WebSocket</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-white/70">API URL</label>
-                  <Input readOnly value={apiUrl || "-"} className="bg-black/60 text-white border-white/10" />
+      {user?.role === 'admin' && (
+        <AnimatedContent delay={50}>
+          <ClickSpark>
+            <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
+              <CardHeader>
+                <CardTitle className="text-white">Conexión</CardTitle>
+                <CardDescription>URLs actuales de API y WebSocket</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-white/70">API URL</label>
+                    <Input readOnly value={apiUrl || "-"} className="bg-black/60 text-white border-white/10" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-white/70">WS URL</label>
+                    <Input readOnly value={wsUrl || "-"} className="bg-black/60 text-white border-white/10" />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm text-white/70">WS URL</label>
-                  <Input readOnly value={wsUrl || "-"} className="bg-black/60 text-white border-white/10" />
-                </div>
-              </div>
-              <p className="text-xs text-white/50">Se configuran vía variables de entorno `NEXT_PUBLIC_API_URL` y `NEXT_PUBLIC_WS_URL`.</p>
-            </CardContent>
-          </Card>
-        </ClickSpark>
-      </AnimatedContent>
+                <p className="text-xs text-white/50">Se configuran vía variables de entorno `NEXT_PUBLIC_API_URL` y `NEXT_PUBLIC_WS_URL`.</p>
+              </CardContent>
+            </Card>
+          </ClickSpark>
+        </AnimatedContent>
+      )}
 
       {/* Preferencias de Telemetría */}
       <FadeContent>

@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { dashboardApi, telemetryApi } from '@/services/api';
+import { dashboardApi, telemetryApi, alertsApi } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Cpu, Activity, Terminal, Bell, TrendingUp, TrendingDown } from 'lucide-react';
+import { Cpu, Activity, Terminal, Bell, TrendingUp } from 'lucide-react';
 import Galaxy from '@/components/ui/Galaxy';
 import type { DashboardStats } from '@/types';
 import { RealtimeChart } from "@/components/telemetry/RealtimeChart";
@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useDevices } from "@/hooks/useDevices";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -23,6 +25,7 @@ export default function DashboardPage() {
   const { accessToken } = useAuthStore();
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [recentEvents, setRecentEvents] = useState<Array<{ icon: 'telemetry' | 'connection' | 'alert'; title: string; time: string }>>([]);
   // Llamar hooks siempre en el mismo orden: useWebSocket no debe ser condicional
   const { telemetryData, status, wsClient, lastError } = useWebSocket(selectedDevice || "", accessToken || "");
 
@@ -69,6 +72,63 @@ export default function DashboardPage() {
     };
     loadHistory();
   }, [selectedDevice]);
+
+  // Cargar actividad reciente real (telemetría, conexión, alertas)
+  useEffect(() => {
+    const loadRecent = async () => {
+      try {
+        const events: Array<{ icon: 'telemetry' | 'connection' | 'alert'; title: string; time: string }> = [];
+
+        // Última telemetría del dispositivo seleccionado o del primero
+        const deviceId = selectedDevice || (devices?.[0]?.id ?? null);
+        if (deviceId) {
+          try {
+            const latest = await telemetryApi.getLatest(deviceId);
+            if (latest?.timestamp) {
+              events.push({
+                icon: 'telemetry',
+                title: `Telemetría recibida (${latest.device_name || deviceId})`,
+                time: formatDistanceToNow(new Date(latest.timestamp), { addSuffix: true, locale: es }),
+              });
+            }
+          } catch (_) {}
+        }
+
+        // Última conexión de cualquier dispositivo del usuario
+        const devicesWithConn = (devices || []).filter((d: any) => d?.last_connection);
+        if (devicesWithConn.length) {
+          const latestConn = devicesWithConn.sort((a: any, b: any) => new Date(b.last_connection).getTime() - new Date(a.last_connection).getTime())[0];
+          events.push({
+            icon: 'connection',
+            title: `Dispositivo conectado (${latestConn.name || latestConn.id})`,
+            time: formatDistanceToNow(new Date(latestConn.last_connection), { addSuffix: true, locale: es }),
+          });
+        }
+
+        // Última alerta activa
+        try {
+          const alerts = await alertsApi.list({ is_active: true });
+          const items = alerts?.results || [];
+          if (items.length) {
+            const latestAlert = items.sort((a: any, b: any) => new Date(b.last_triggered || b.created_at).getTime() - new Date(a.last_triggered || a.created_at).getTime())[0];
+            const when = latestAlert.last_triggered || latestAlert.created_at;
+            if (when) {
+              events.push({
+                icon: 'alert',
+                title: `Alerta: ${latestAlert.name}`,
+                time: formatDistanceToNow(new Date(when), { addSuffix: true, locale: es }),
+              });
+            }
+          }
+        } catch (_) {}
+
+        setRecentEvents(events.slice(0, 3));
+      } catch (e) {
+        setRecentEvents([]);
+      }
+    };
+    loadRecent();
+  }, [devices, selectedDevice]);
 
   // Obtener saludo según la hora
   const getGreeting = () => {
@@ -295,33 +355,22 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="bg-blue-600/20 p-2 rounded-lg">
-                  <Activity className="h-4 w-4 text-blue-300" />
+              {recentEvents.length === 0 && (
+                <p className="text-sm text-white/70">Sin eventos recientes.</p>
+              )}
+              {recentEvents.map((ev, idx) => (
+                <div key={idx} className="flex items-center gap-4">
+                  <div className={ev.icon === 'telemetry' ? 'bg-blue-600/20 p-2 rounded-lg' : ev.icon === 'connection' ? 'bg-green-600/20 p-2 rounded-lg' : 'bg-orange-600/20 p-2 rounded-lg'}>
+                    {ev.icon === 'telemetry' && <Activity className="h-4 w-4 text-blue-300" />}
+                    {ev.icon === 'connection' && <Cpu className="h-4 w-4 text-green-300" />}
+                    {ev.icon === 'alert' && <Bell className="h-4 w-4 text-orange-300" />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{ev.title}</p>
+                    <p className="text-xs text-white/70">{ev.time}</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Telemetría recibida</p>
-                  <p className="text-xs text-white/70">Hace 2 minutos</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="bg-green-600/20 p-2 rounded-lg">
-                  <Cpu className="h-4 w-4 text-green-300" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Dispositivo conectado</p>
-                  <p className="text-xs text-white/70">Hace 15 minutos</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="bg-orange-600/20 p-2 rounded-lg">
-                  <Bell className="h-4 w-4 text-orange-300" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Nueva alerta generada</p>
-                  <p className="text-xs text-white/70">Hace 1 hora</p>
-                </div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>

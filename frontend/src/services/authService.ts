@@ -16,11 +16,16 @@ export const authService = {
   
   async logout(refresh?: string): Promise<void> {
     try {
-      // El backend espera { refresh: <token> } para invalidar
-      await api.post('/auth/logout/', refresh ? { refresh } : {});
-    } catch (e) {
-      // Silenciar errores de logout: el cliente limpiará sesión igualmente
-      throw e;
+      // El backend requiere autenticación y el token de refresh.
+      // Si no hay refresh token disponible, no llamar al endpoint
+      // y dejar que el cliente limpie la sesión.
+      if (refresh) {
+        await api.post('/auth/logout/', { refresh });
+      }
+      // No propagar errores: el cliente debe limpiar sesión igualmente.
+    } catch (_) {
+      // Swallow error para evitar mostrar modal rojo en logout.
+      // La sesión se limpiará en el hook useAuth.
     }
   },
   

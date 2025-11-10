@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Cpu, Edit, Trash2, Activity } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { resolveDeviceDescription } from "@/lib/device";
 
 interface DeviceCardProps {
   device: Device;
@@ -19,11 +20,11 @@ export const DeviceCard = ({ device, onEdit, onDelete, onView }: DeviceCardProps
   const getDeviceIcon = () => {
     switch (device.device_type) {
       case "sensor":
-        return <Activity className="h-6 w-6" />;
+        return <Activity className="h-6 w-6 text-white/80" />;
       case "actuator":
-        return <Cpu className="h-6 w-6" />;
+        return <Cpu className="h-6 w-6 text-white/80" />;
       default:
-        return <Cpu className="h-6 w-6" />;
+        return <Cpu className="h-6 w-6 text-white/80" />;
     }
   };
 
@@ -32,10 +33,12 @@ export const DeviceCard = ({ device, onEdit, onDelete, onView }: DeviceCardProps
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">{getDeviceIcon()}</div>
+            <div className="p-2 rounded-lg bg-white/10 text-white/80 border border-white/10">{getDeviceIcon()}</div>
             <div>
               <CardTitle className="text-lg">{device.name}</CardTitle>
-              <CardDescription>{device.device_type}</CardDescription>
+              <CardDescription>
+                {resolveDeviceDescription(device)}
+              </CardDescription>
             </div>
           </div>
           <Badge variant={device.is_active ? "default" : "secondary"}>
@@ -46,7 +49,7 @@ export const DeviceCard = ({ device, onEdit, onDelete, onView }: DeviceCardProps
 
       <CardContent>
         <p className="text-sm text-muted-foreground line-clamp-2">
-          {device.description || "Sin descripción"}
+          {device.device_type}
         </p>
 
         {device.last_connection && (

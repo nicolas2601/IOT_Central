@@ -65,13 +65,17 @@ class DeviceViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """
-        Retorna dispositivos del usuario autenticado.
-        Los admins pueden ver todos los dispositivos.
+        Retorna dispositivos visibles para el usuario:
+        - Admin: todos los dispositivos
+        - Autenticado: solo dispositivos de los que es propietario
+        - Anónimo: ninguno
         """
         user = self.request.user
         is_admin = getattr(user, 'is_admin', False)
+
         if not getattr(user, 'is_authenticated', False):
-            queryset = Device.objects.all()
+            # Usuarios anónimos no ven dispositivos, incluso en DEBUG
+            queryset = Device.objects.none()
         elif is_admin:
             queryset = Device.objects.all()
         else:
@@ -115,10 +119,14 @@ class DeviceViewSet(viewsets.ModelViewSet):
         logger.info(f"Dispositivo creado: {device.name} por {self.request.user.username}")
     
     def perform_destroy(self, instance):
-        """Elimina un dispositivo (soft delete)"""
-        instance.is_active = False
-        instance.save()
-        logger.warning(f"Dispositivo desactivado: {instance.name} por {self.request.user.username}")
+        """Elimina un dispositivo de forma definitiva (hard delete)."""
+        name = instance.name
+        instance.delete()
+        logger.warning(f"Dispositivo eliminado: {name} por {getattr(self.request.user, 'username', 'usuario')} ")
+
+    def perform_create(self, serializer):
+        """Asigna el propietario del dispositivo al usuario autenticado."""
+        serializer.save(owner=self.request.user)
     
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
@@ -587,17 +595,17 @@ class DashboardStatsView(APIView):
     
     GET /api/dashboard/stats/
     """
-    permission_classes = [ReadOnlyIfDebug]
-    authentication_classes = []
+    # Requiere autenticación JWT; evita que usuarios anónimos vean datos globales
+    from rest_framework_simplejwt.authentication import JWTAuthentication
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     
     def get(self, request):
         user = request.user
         is_admin = getattr(user, 'is_admin', False)
         
-        # Obtener dispositivos del usuario (anónimo ve todo en debug)
-        if not getattr(user, 'is_authenticated', False):
-            devices = Device.objects.all()
-        elif is_admin:
+        # Obtener dispositivos del usuario
+        if is_admin:
             devices = Device.objects.all()
         else:
             devices = Device.objects.filter(owner=user)

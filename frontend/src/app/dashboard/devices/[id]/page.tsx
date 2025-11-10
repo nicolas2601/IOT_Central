@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Device, Telemetry } from "@/types";
+import { resolveDeviceDescription } from "@/lib/device";
 
 export default function DeviceDetailPage() {
   const params = useParams<{ id: string }>();
@@ -48,7 +49,7 @@ export default function DeviceDetailPage() {
               <p><b>Estado:</b> {device.is_active ? "Activo" : "Inactivo"}</p>
             </div>
             <div>
-              <p><b>Descripción:</b> {device.description || "Sin descripción"}</p>
+              <p><b>Descripción:</b> {resolveDeviceDescription(device)}</p>
               <p><b>Última conexión:</b> {device.last_connection || "-"}</p>
             </div>
           </div>
