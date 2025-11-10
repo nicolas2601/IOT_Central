@@ -4,6 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RealtimeChart } from "@/components/telemetry/RealtimeChart";
+import { TelemetryKpis } from "@/components/telemetry/TelemetryKpis";
+import { AdvancedCharts } from "@/components/telemetry/AdvancedCharts";
+import { MetricSelector } from "@/components/telemetry/MetricSelector";
+import { EventTable } from "@/components/telemetry/EventTable";
+import { HourlyStacked } from "@/components/telemetry/HourlyStacked";
+import { RadialPanicGauge } from "@/components/telemetry/RadialPanicGauge";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useDevices } from "@/hooks/useDevices";
 import { useAuthStore } from "@/store/authStore";
@@ -21,6 +27,8 @@ export default function TelemetryPage() {
   const { telemetryData, status, lastError } = useWebSocket(selectedDevice || "", accessToken || "");
   const wsEnabled = !!accessToken && !!selectedDevice;
   const [fallbackData, setFallbackData] = useState<any[]>([]);
+  const analyticsData = telemetryData.length ? telemetryData : fallbackData;
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
 
   // Fallback REST: si el WS no entrega muestras, mostrar la última telemetría
   useEffect(() => {
@@ -56,6 +64,7 @@ export default function TelemetryPage() {
     <div className="space-y-6">
       <div className="space-y-4">
         <ShinyText as="h1" className="text-3xl font-bold">Telemetría en Tiempo Real</ShinyText>
+        <br />
         <TextType text={statusText} className="text-sm text-white/80" />
       </div>
 
@@ -128,6 +137,38 @@ export default function TelemetryPage() {
           </div>
         </StarBorder>
       </FadeContent>
+
+      {/* Analítica y visualizaciones adicionales */}
+      {(analyticsData && analyticsData.length > 0) && (
+        <FadeContent>
+          <StarBorder>
+            <div className="bg-black/40 border-white/10 backdrop-blur-xl rounded-xl p-2">
+              <Card className="bg-transparent border-transparent">
+                <CardHeader>
+                  <CardTitle className="text-white">Analítica</CardTitle>
+                  <CardDescription>KPIs y gráficas avanzadas al estilo Azure</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <TelemetryKpis telemetryData={analyticsData} />
+                  <div className="space-y-3">
+                    <div className="text-xs text-white/70">Selecciona métricas para las series</div>
+                    <MetricSelector telemetryData={analyticsData} onChange={setSelectedMetrics} max={3} />
+                  </div>
+                  <AdvancedCharts telemetryData={analyticsData} selectedKeys={selectedMetrics} />
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <HourlyStacked telemetryData={analyticsData} />
+                    <RadialPanicGauge telemetryData={analyticsData} />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="text-sm text-white/80">Eventos recientes</div>
+                    <EventTable telemetryData={analyticsData} />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </StarBorder>
+        </FadeContent>
+      )}
     </div>
   );
 }

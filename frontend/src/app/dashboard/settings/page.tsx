@@ -29,6 +29,7 @@ export default function SettingsPage() {
       {/* Header */}
       <div className="space-y-4">
         <ShinyText as="h1" className="text-3xl font-bold">Configuración</ShinyText>
+        <br />
         <TextType text="Ajusta tu experiencia, apariencia y conexión" className="text-sm text-white/80" />
       </div>
 
