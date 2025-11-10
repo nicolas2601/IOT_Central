@@ -14,8 +14,14 @@ export const authService = {
     return { user: data.user, tokens };
   },
   
-  async logout(): Promise<void> {
-    await api.post('/auth/logout/');
+  async logout(refresh?: string): Promise<void> {
+    try {
+      // El backend espera { refresh: <token> } para invalidar
+      await api.post('/auth/logout/', refresh ? { refresh } : {});
+    } catch (e) {
+      // Silenciar errores de logout: el cliente limpiará sesión igualmente
+      throw e;
+    }
   },
   
   async getProfile(): Promise<User> {

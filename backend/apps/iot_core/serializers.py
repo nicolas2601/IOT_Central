@@ -190,16 +190,30 @@ class CommandCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Command
         fields = ['device', 'command_type', 'payload']
+
+    def to_internal_value(self, data):
+        """
+        Permite aceptar 'device_id' o 'deviceId' como alias de 'device'.
+        Si se provee uno de estos campos y 'device' no está presente, lo mapea.
+        """
+        # Hacer una copia mutable de los datos
+        data = dict(data)
+        if 'device' not in data:
+            alias_id = data.get('device_id') or data.get('deviceId')
+            if alias_id:
+                # Mapear al campo esperado por el modelo
+                data['device'] = alias_id
+        return super().to_internal_value(data)
     
     def validate_device(self, value):
         """Valida que el dispositivo exista, esté activo y pertenezca al usuario"""
         if not value.is_active:
             raise serializers.ValidationError("El dispositivo no está activo")
-        
+
         user = self.context['request'].user
         if value.owner != user and not user.is_admin:
             raise serializers.ValidationError("No tienes permiso para enviar comandos a este dispositivo")
-        
+
         return value
     
     def validate_command_type(self, value):

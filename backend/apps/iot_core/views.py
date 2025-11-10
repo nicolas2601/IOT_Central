@@ -9,7 +9,7 @@ Define las vistas para:
 - Dashboard y estadísticas
 """
 # backend/apps/iot_core/views.py
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework import viewsets, generics, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -27,8 +27,27 @@ from .serializers import (
     AlertSerializer, AlertCreateSerializer
 )
 from .mqtt_client import MQTTClient
+import subprocess
+import sys
+import os
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+
+class ReadOnlyIfDebug(permissions.BasePermission):
+    """
+    Permite acceso READ-ONLY (métodos seguros) sin autenticación cuando DEBUG=True.
+    En producción o para métodos de escritura exige autenticación.
+    """
+    def has_permission(self, request, view):
+        # Métodos seguros: GET, HEAD, OPTIONS
+        if request.method in permissions.SAFE_METHODS:
+            # Si está habilitado DEBUG, permitimos acceso anónimo de solo lectura
+            if getattr(settings, 'DEBUG', False):
+                return True
+        # Para todo lo demás, exige autenticación
+        return request.user and request.user.is_authenticated
 
 
 class DeviceViewSet(viewsets.ModelViewSet):
@@ -42,7 +61,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
     - PUT/PATCH /api/devices/{id}/ - Actualizar dispositivo
     - DELETE /api/devices/{id}/ - Eliminar dispositivo
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ReadOnlyIfDebug]
     
     def get_queryset(self):
         """
@@ -50,7 +69,10 @@ class DeviceViewSet(viewsets.ModelViewSet):
         Los admins pueden ver todos los dispositivos.
         """
         user = self.request.user
-        if user.is_admin:
+        is_admin = getattr(user, 'is_admin', False)
+        if not getattr(user, 'is_authenticated', False):
+            queryset = Device.objects.all()
+        elif is_admin:
             queryset = Device.objects.all()
         else:
             queryset = Device.objects.filter(owner=user)
@@ -116,6 +138,75 @@ class DeviceViewSet(viewsets.ModelViewSet):
         logger.info(f"Dispositivo desactivado: {device.name}")
         return Response({'message': 'Dispositivo desactivado exitosamente'})
 
+    @action(detail=True, methods=['post'], url_path='start-simulator')
+    def start_simulator(self, request, pk=None):
+        """
+        Inicia el simulador de dispositivo desde el backend.
+
+        POST /api/devices/{id}/start-simulator/
+        Body opcional:
+        - interval: int (segundos, default 5)
+        - device_type: str (sensor/actuator/gateway). Si no se envía, usa el del modelo
+        """
+        try:
+            device = self.get_object()
+
+            # Permisos: dueño o admin
+            user = request.user
+            if device.owner != user and not user.is_admin:
+                return Response(
+                    {'error': 'No tienes permiso para iniciar simulador de este dispositivo'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            interval = int(request.data.get('interval', 5))
+            device_type = request.data.get('device_type') or device.device_type
+
+            # Construir comando usando el intérprete de Python actual y ruta absoluta del script
+            simulator_path = os.path.join(settings.BASE_DIR, 'simulador', 'device_simulator.py')
+            if not os.path.exists(simulator_path):
+                logger.error(f"Script de simulador no encontrado en: {simulator_path}")
+                return Response(
+                    {'error': 'Script de simulador no encontrado'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            cmd = [
+                sys.executable,
+                simulator_path,
+                '--device-id', str(device.id),
+                '--device-type', str(device_type),
+                '--interval', str(interval)
+            ]
+
+            try:
+                # Lanzar proceso en background
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                logger.info(f"Simulador iniciado para {device.name} (PID {process.pid})")
+                return Response({
+                    'message': 'Simulador iniciado',
+                    'pid': process.pid,
+                    'device_id': str(device.id),
+                    'device_type': device_type,
+                    'interval': interval
+                })
+            except Exception as e:
+                logger.error(f"Error iniciando simulador: {str(e)}")
+                return Response(
+                    {'error': f'No se pudo iniciar el simulador: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Device.DoesNotExist:
+            return Response(
+                {'error': 'Dispositivo no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
 
 class TelemetryViewSet(viewsets.ModelViewSet):
     """
@@ -127,7 +218,7 @@ class TelemetryViewSet(viewsets.ModelViewSet):
     - GET /api/telemetry/{id}/ - Obtener registro específico
     """
     serializer_class = TelemetrySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ReadOnlyIfDebug]
     
     def get_queryset(self):
         """
@@ -135,9 +226,12 @@ class TelemetryViewSet(viewsets.ModelViewSet):
         Soporta filtros por dispositivo, fecha, etc.
         """
         user = self.request.user
+        is_admin = getattr(user, 'is_admin', False)
         
         # Base queryset según permisos
-        if user.is_admin:
+        if not getattr(user, 'is_authenticated', False):
+            queryset = Telemetry.objects.all()
+        elif is_admin:
             queryset = Telemetry.objects.all()
         else:
             queryset = Telemetry.objects.filter(device__owner=user)
@@ -187,13 +281,16 @@ class CommandViewSet(viewsets.ModelViewSet):
     - GET /api/commands/{id}/ - Obtener comando
     """
     serializer_class = CommandSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ReadOnlyIfDebug]
     
     def get_queryset(self):
         """Retorna comandos de dispositivos del usuario"""
         user = self.request.user
+        is_admin = getattr(user, 'is_admin', False)
         
-        if user.is_admin:
+        if not getattr(user, 'is_authenticated', False):
+            queryset = Command.objects.all()
+        elif is_admin:
             queryset = Command.objects.all()
         else:
             queryset = Command.objects.filter(device__owner=user)
@@ -235,13 +332,16 @@ class AlertViewSet(viewsets.ModelViewSet):
     ViewSet para gestión de alertas.
     """
     serializer_class = AlertSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ReadOnlyIfDebug]
     
     def get_queryset(self):
         """Retorna alertas de dispositivos del usuario"""
         user = self.request.user
+        is_admin = getattr(user, 'is_admin', False)
         
-        if user.is_admin:
+        if not getattr(user, 'is_authenticated', False):
+            queryset = Alert.objects.all()
+        elif is_admin:
             queryset = Alert.objects.all()
         else:
             queryset = Alert.objects.filter(device__owner=user)
@@ -270,14 +370,21 @@ class LatestTelemetryView(generics.RetrieveAPIView):
     
     GET /api/telemetry/latest/{device_id}/
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ReadOnlyIfDebug]
     
     def get(self, request, device_id):
         try:
             device = Device.objects.get(id=device_id)
             
             # Verificar permisos
-            if device.owner != request.user and not request.user.is_admin:
+            if not getattr(request.user, 'is_authenticated', False):
+                # En debug, permitir lectura anónima
+                if not getattr(settings, 'DEBUG', False):
+                    return Response(
+                        {'error': 'No autenticado'},
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+            elif device.owner != request.user and not getattr(request.user, 'is_admin', False):
                 return Response(
                     {'error': 'No tienes permiso para ver este dispositivo'},
                     status=status.HTTP_403_FORBIDDEN
@@ -312,7 +419,7 @@ class TelemetryStatisticsView(APIView):
     - end_date: Fecha de fin (opcional)
     - metric: Métrica específica a analizar (opcional)
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ReadOnlyIfDebug]
     
     def get(self, request, device_id):
         try:
@@ -400,7 +507,7 @@ class DeviceTelemetryView(generics.ListAPIView):
     GET /api/devices/{device_id}/telemetry/
     """
     serializer_class = TelemetrySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ReadOnlyIfDebug]
     
     def get_queryset(self):
         device_id = self.kwargs.get('pk')
@@ -467,7 +574,7 @@ class DeviceCommandsView(generics.ListAPIView):
     GET /api/devices/{device_id}/commands/
     """
     serializer_class = CommandSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ReadOnlyIfDebug]
     
     def get_queryset(self):
         device_id = self.kwargs.get('pk')
@@ -480,13 +587,17 @@ class DashboardStatsView(APIView):
     
     GET /api/dashboard/stats/
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ReadOnlyIfDebug]
+    authentication_classes = []
     
     def get(self, request):
         user = request.user
+        is_admin = getattr(user, 'is_admin', False)
         
-        # Obtener dispositivos del usuario
-        if user.is_admin:
+        # Obtener dispositivos del usuario (anónimo ve todo en debug)
+        if not getattr(user, 'is_authenticated', False):
+            devices = Device.objects.all()
+        elif is_admin:
             devices = Device.objects.all()
         else:
             devices = Device.objects.filter(owner=user)
@@ -503,13 +614,19 @@ class DashboardStatsView(APIView):
             count=Count('id')
         )
         
-        # Telemetría reciente
+        # Totales (sin límite de 24h)
+        total_telemetry = Telemetry.objects.filter(
+            device__in=devices
+        ).count()
+        total_commands = Command.objects.filter(
+            device__in=devices
+        ).count()
+
+        # (Compatibilidad) métricas recientes 24h
         recent_telemetry = Telemetry.objects.filter(
             device__in=devices,
             timestamp__gte=timezone.now() - timedelta(hours=24)
         ).count()
-        
-        # Comandos recientes
         recent_commands = Command.objects.filter(
             device__in=devices,
             created_at__gte=timezone.now() - timedelta(hours=24)
@@ -527,12 +644,15 @@ class DashboardStatsView(APIView):
             'online_devices': online_devices,
             'offline_devices': active_devices - online_devices,
             'devices_by_type': list(devices_by_type),
+            'total_telemetry': total_telemetry,
+            'total_commands': total_commands,
             'recent_telemetry_24h': recent_telemetry,
             'recent_commands_24h': recent_commands,
             'active_alerts': active_alerts,
             'timestamp': timezone.now()
         })
 @api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
 def send_command(request):
     """
     Endpoint para recibir comandos desde el frontend.

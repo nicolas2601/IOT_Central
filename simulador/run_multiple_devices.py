@@ -14,6 +14,7 @@ import time
 import signal
 import sys
 import uuid
+import os
 
 processes = []
 
@@ -88,9 +89,11 @@ def main():
         
         print(f"→ Iniciando dispositivo {i+1}/{args.count}: {device_type} ({device_id[:8]}...)")
         
+        # Use the current Python interpreter and absolute path for portability (Windows/Linux)
+        simulator_path = os.path.join(os.path.dirname(__file__), 'device_simulator.py')
         cmd = [
-            'python3',
-            'device_simulator.py',
+            sys.executable,
+            simulator_path,
             '--device-id', device_id,
             '--device-type', device_type,
             '--broker', args.broker,

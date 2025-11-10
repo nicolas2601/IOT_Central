@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { dashboardApi } from '@/services/api';
+import { dashboardApi, telemetryApi } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Cpu, Activity, Terminal, Bell, TrendingUp, TrendingDown } from 'lucide-react';
@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const { devices } = useDevices();
   const { accessToken } = useAuthStore();
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
   // Llamar hooks siempre en el mismo orden: useWebSocket no debe ser condicional
   const { telemetryData, status, wsClient, lastError } = useWebSocket(selectedDevice || "", accessToken || "");
 
@@ -49,6 +50,25 @@ export default function DashboardPage() {
 
     loadStats();
   }, []);
+
+  // Cargar historial de telemetría para el dispositivo seleccionado (últimos 7 días)
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!selectedDevice) {
+        setHistory([]);
+        return;
+      }
+      try {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const res = await telemetryApi.list({ device: selectedDevice, start_date: sevenDaysAgo });
+        const items = res?.results || [];
+        setHistory(items.reverse()); // ordenar ascendente por timestamp
+      } catch (e) {
+        setHistory([]);
+      }
+    };
+    loadHistory();
+  }, [selectedDevice]);
 
   // Obtener saludo según la hora
   const getGreeting = () => {
@@ -139,20 +159,22 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Telemetría Reciente */}
+        {/* Telemetría Total */}
         <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Telemetría (24h)
+              Telemetría Total
             </CardTitle>
             <Terminal className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats?.recent_telemetry_24h || 0}
+              {stats?.total_telemetry ?? stats?.recent_telemetry_24h ?? 0}
             </div>
             <p className="text-xs text-white/70 mt-1">
-              Registros recibidos
+              {stats?.recent_telemetry_24h != null
+                ? `${stats?.recent_telemetry_24h} en últimas 24h`
+                : 'Registros recibidos'}
             </p>
           </CardContent>
         </Card>
@@ -247,6 +269,19 @@ export default function DashboardPage() {
           ) : (
             <div className="p-6 text-white/70 text-sm">Selecciona un dispositivo para ver datos en tiempo real.</div>
           )}
+
+          {/* Historial de Telemetría (7 días) */}
+          {history.length > 0 && (
+            <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
+              <CardHeader>
+                <CardTitle>Historial de Telemetría (7 días)</CardTitle>
+                <CardDescription>Principales métricas históricas</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <HistoryChart data={history} />
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
       {/* Actividad Reciente */}
@@ -293,21 +328,52 @@ export default function DashboardPage() {
 
         <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
           <CardHeader>
-            <CardTitle>Comandos Recientes</CardTitle>
+            <CardTitle>Comandos</CardTitle>
             <CardDescription>
-              Últimos comandos enviados (24h)
+              Total y últimos 24h
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
               <Terminal className="h-12 w-12 text-white/70 mx-auto mb-2" />
               <p className="text-sm text-white/70">
-                {stats?.recent_commands_24h || 0} comandos enviados en las últimas 24 horas
+                Total: {stats?.total_commands ?? stats?.recent_commands_24h ?? 0}
               </p>
+              {stats?.recent_commands_24h != null && (
+                <p className="text-xs text-white/60 mt-1">
+                  {stats?.recent_commands_24h} en últimas 24h
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
+}
+
+// Selecciona una métrica representativa del conjunto de datos
+function pickMetricKeyFromHistory(data: any[]): string | null {
+  for (let i = data.length - 1; i >= 0; i--) {
+    const d = data[i]?.data;
+    if (d && typeof d === 'object') {
+      const keys = Object.keys(d);
+      const numericKey = keys.find((k) => typeof d[k] === 'number');
+      if (numericKey) return numericKey;
+    }
+  }
+  return null;
+}
+
+// Componente simple que usa RechartsLineDynamic para renderizar el historial
+function HistoryChart({ data }: { data: any[] }) {
+  const key = pickMetricKeyFromHistory(data);
+  const chartData = data.map((d) => ({
+    timestamp: new Date(d.timestamp).toLocaleString(),
+    [key || 'valor']: key ? d.data[key] : null,
+  }));
+  const dataKey = key || 'valor';
+  // Carga dinámica del componente de Recharts
+  const RechartsLineDynamic = require('@/components/dashboard/RechartsLineDynamic').default;
+  return <RechartsLineDynamic data={chartData} dataKey={dataKey} />;
 }

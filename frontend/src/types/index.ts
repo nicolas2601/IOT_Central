@@ -192,7 +192,9 @@ export interface DashboardStats {
     device_type: DeviceType;
     count: number;
   }>;
+  total_telemetry?: number;
   recent_telemetry_24h: number;
+  total_commands?: number;
   recent_commands_24h: number;
   active_alerts: number;
   timestamp: string;

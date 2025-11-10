@@ -8,7 +8,7 @@ import { LoginCredentials, RegisterData } from '@/types';
 
 export const useAuth = () => {
   const router = useRouter();
-  const { user, isAuthenticated, setAuth, clearAuth } = useAuthStore();
+  const { user, isAuthenticated, setAuth, clearAuth, refreshToken } = useAuthStore();
   
   const loginMutation = useMutation({
     mutationFn: (credentials: LoginCredentials) => authService.login(credentials),
@@ -27,11 +27,23 @@ export const useAuth = () => {
   });
   
   const logoutMutation = useMutation({
-    mutationFn: () => authService.logout(),
+    mutationFn: async () => {
+      const token = typeof refreshToken === 'string' ? refreshToken : null;
+      await authService.logout(token ?? undefined);
+    },
     onSuccess: () => {
       clearAuth();
       router.push('/login');
     },
+    onError: () => {
+      // Si falla el logout en servidor, igual limpiar sesión local y redirigir
+      clearAuth();
+      router.push('/login');
+    },
+    onSettled: () => {
+      // Garantizar limpieza en cualquier caso
+      clearAuth();
+    }
   });
   
   return {
@@ -39,7 +51,7 @@ export const useAuth = () => {
     isAuthenticated,
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
-    logout: logoutMutation.mutate,
+    logout: logoutMutation.mutateAsync,
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
   };
