@@ -160,7 +160,7 @@ POSTGRES_PORT=5432
 MQTT_BROKER_HOST=mosquitto
 MQTT_BROKER_PORT=1883
 ALLOWED_HOSTS=localhost,127.0.0.1
-CORS_ALLOWED_ORIGINS=http://localhost:5173
+CORS_ALLOWED_ORIGINS=http://localhost:3000
 
 ## sistema operatvio 
 arch linux

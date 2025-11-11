@@ -1,20 +1,20 @@
 # Dockerfile para Frontend Next.js
 # Plataforma IoT - Proyecto Final
+# Optimizado para producción en Coolify
 
 # Etapa 1: Dependencias
 FROM node:20-alpine AS deps
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copiar archivos de dependencias
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json package-lock.json* ./
 
 # Instalar dependencias
-RUN pnpm install --frozen-lockfile
+RUN npm ci --only=production
 
 # Etapa 2: Builder
 FROM node:20-alpine AS builder
-RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 # Copiar dependencias instaladas
@@ -27,8 +27,8 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build de la aplicación
-RUN pnpm build
+# Build de la aplicación con standalone output
+RUN npm run build
 
 # Etapa 3: Runner
 FROM node:20-alpine AS runner
@@ -38,22 +38,25 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Crear usuario no-root
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
 # Copiar archivos necesarios
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
 
-# Cambiar ownership
-RUN chown -R nextjs:nodejs /app
+# Copiar archivos standalone
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-EXPOSE 5173
+EXPOSE 3000
 
-ENV PORT=5173
+ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 CMD ["node", "server.js"]

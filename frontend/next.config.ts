@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   
+  // Habilitar standalone output para Docker
+  output: 'standalone',
+  
   // Configuración de imágenes
   images: {
     domains: ['localhost'],

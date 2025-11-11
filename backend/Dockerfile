@@ -1,41 +1,51 @@
 # Dockerfile para Backend Django
 # Plataforma IoT - Proyecto Final
+# Optimizado para producción en Coolify
 
-# Usar imagen base de Python 3.11
 FROM python:3.11-slim
 
-# Establecer variables de entorno
+# Variables de entorno
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DJANGO_SETTINGS_MODULE=config.settings
 
-# Establecer directorio de trabajo
+# Directorio de trabajo
 WORKDIR /app
 
 # Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     postgresql-client \
     libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar archivos de dependencias
+# Copiar requirements y instalar dependencias
 COPY requirements.txt .
-
-# Instalar dependencias de Python
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt
 
-# Copiar el código de la aplicación
+# Copiar código de la aplicación
 COPY . .
 
 # Crear directorios necesarios
-RUN mkdir -p /app/staticfiles /app/media /app/logs
+RUN mkdir -p /app/staticfiles /app/media /app/logs && \
+    chmod +x /app/entrypoint.sh
+
+# Crear usuario no-root para seguridad
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
 
 # Exponer puerto
 EXPOSE 8000
 
-# Comando por defecto (se sobrescribe en docker-compose)
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health/ || exit 1
+
+# Usar entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
