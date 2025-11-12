@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/authStore';
 import { openErrorModal } from '@/store/errorStore';
+import api from "./base"; // o "@/services/base" si estás usando alias
 import type {
   User,
   LoginCredentials,
@@ -17,6 +18,8 @@ import type {
   DashboardStats,
   PaginatedResponse,
 } from '@/types';
+
+
 
 /**
  * Cliente API para la Plataforma IoT
@@ -40,6 +43,20 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 10000,
+});
+
+// 🧩 Log de requests salientes — útil para depurar URLs y tokens
+apiClient.interceptors.request.use((config) => {
+  const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
+  console.log("🌐 [API Request]", config.method?.toUpperCase(), fullUrl);
+
+  if (config.headers?.Authorization) {
+    console.log("🔐 Token JWT presente");
+  } else {
+    console.warn("⚠️ Petición sin token JWT");
+  }
+
+  return config;
 });
 
 // Interceptor para agregar token JWT a las peticiones
@@ -232,6 +249,14 @@ export const devicesApi = {
     const response = await apiClient.get<Command[]>(`/devices/${id}/commands/`);
     return response.data;
   },
+  // Inicia simulador de un dispositivo
+  startSimulator: async (deviceId: string) => {
+    console.log("🚀 Iniciando simulador para:", deviceId);
+    const res = await apiClient.post(`/devices/${deviceId}/start-simulator/`);
+    console.log("✅ Respuesta del backend:", res.data);
+    return res.data;
+  }
+
 };
 
 // ============================================

@@ -1,27 +1,60 @@
 "use client";
 import { create } from "zustand";
 
-interface ErrorState {
+/**
+ * 🧩 Estado global para manejar modales de error y éxito
+ * Compatible con ErrorModal y SuccessModal.
+ */
+interface ModalState {
   isOpen: boolean;
   title?: string;
   message?: string;
   details?: string;
+  type?: "error" | "success";
+
+  // Métodos principales
   openError: (title: string, message?: string, details?: string) => void;
-  closeError: () => void;
+  openSuccess: (title: string, message?: string, details?: string) => void;
+  closeModal: () => void;
 }
 
-export const useErrorStore = create<ErrorState>()((set) => ({
+// 🧠 Store principal (mismo estado para ambos modales)
+export const useErrorStore = create<ModalState>((set) => ({
   isOpen: false,
   title: undefined,
   message: undefined,
   details: undefined,
+  type: undefined,
+
   openError: (title, message, details) =>
-    set({ isOpen: true, title, message, details }),
-  closeError: () =>
-    set({ isOpen: false, title: undefined, message: undefined, details: undefined }),
+    set({ isOpen: true, title, message, details, type: "error" }),
+
+  openSuccess: (title, message, details) =>
+    set({ isOpen: true, title, message, details, type: "success" }),
+
+  closeModal: () =>
+    set({
+      isOpen: false,
+      title: undefined,
+      message: undefined,
+      details: undefined,
+      type: undefined,
+    }),
 }));
 
-// Helper para abrir el modal desde código no React (servicios, interceptores)
+/**
+ * 🚀 Helpers globales
+ * Permiten abrir los modales desde cualquier parte del código
+ * (hooks, servicios o componentes sin hooks).
+ */
 export const openErrorModal = (title: string, message?: string, details?: string) => {
   useErrorStore.getState().openError(title, message, details);
+};
+
+export const openSuccessModal = (title: string, message?: string, details?: string) => {
+  useErrorStore.getState().openSuccess(title, message, details);
+};
+
+export const closeModal = () => {
+  useErrorStore.getState().closeModal();
 };

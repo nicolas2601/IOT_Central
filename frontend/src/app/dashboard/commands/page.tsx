@@ -1,46 +1,99 @@
 "use client";
 
-import { useState } from "react";
-import { useCommands } from "@/hooks/useCommands";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { useState, useMemo } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Loader2, Terminal, Send, RefreshCcw } from "lucide-react";
+import { Loader2, Terminal, Send, RefreshCcw, Cpu } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/authStore";
-import { openErrorModal } from "@/store/errorStore";
+import { openErrorModal, openSuccessModal } from "@/store/errorStore";
+import { useCommands } from "@/hooks/useCommands";
+import { useDevices } from "@/hooks/useDevices";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 /**
- * Página de comandos IoT mejorada (Día 4 - Gabriela)
- * - Responsive design
- * - Mejor feedback visual
- * - UI refinada con estilos consistentes
+ * 🌐 Página de comandos IoT (revisada)
+ * - Corrige el envío del ID real (UUID) del dispositivo al backend
+ * - Usa un mapa (diccionario) entre nombre → objeto del dispositivo
  */
 export default function CommandsPage() {
-  const [deviceId, setDeviceId] = useState("sensor_001");
-  const [command, setCommand] = useState("");
-  const { commands, sendCommand, isLoading, refetch } = useCommands();
-  const { user } = useAuthStore();
+  const [selectedDeviceKey, setSelectedDeviceKey] = useState<string>("");
+  const [selectedCommand, setSelectedCommand] = useState<string>("");
+  const [isStartingSimulator, setIsStartingSimulator] = useState(false);
 
-  const handleSend = async () => {
-    if (!deviceId || !command) {
-      openErrorModal("Campos incompletos", "Completa el ID del dispositivo y el comando");
+  const { user } = useAuthStore();
+  const { devices, isLoading: loadingDevices, refetch } = useDevices();
+  const { commands, sendCommand, isLoading } = useCommands();
+
+  // 🔹 Crear un diccionario para buscar el objeto por su key
+  const deviceMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    (devices || []).forEach((device: any, index: number) => {
+      // usamos el índice como clave visible, pero almacenamos el objeto completo
+      map[String(index)] = device;
+    });
+    return map;
+  }, [devices]);
+
+  const commandOptions = [
+    { value: "restart", label: "🔄 Reiniciar dispositivo" },
+    { value: "calibrate", label: "🧭 Calibrar sensor" },
+    { value: "read_data", label: "📊 Leer datos actuales" },
+  ];
+
+  // ✅ Obtener el dispositivo real según la selección
+  const selectedDevice = selectedDeviceKey ? deviceMap[selectedDeviceKey] : null;
+
+  // --- Enviar comando ---
+  const handleSendCommand = async () => {
+    if (!selectedDevice || !selectedCommand) {
+      openErrorModal("Campos incompletos", "Selecciona un dispositivo y un comando.");
       return;
     }
+
+    const deviceId = selectedDevice.id;
+
     sendCommand.mutate(
-      { deviceId, command },
+      { deviceId, command: selectedCommand },
       {
         onSuccess: () => {
-          // Éxito: limpiar el comando y refrescar sin modal (solo errores usan modal)
-          setCommand("");
+          openSuccessModal("Comando enviado", `Comando "${selectedCommand}" enviado correctamente.`);
           refetch();
+          setSelectedCommand("");
         },
         onError: (err: any) => {
-          const description = err?.response?.data?.message || err?.message || "Intenta nuevamente";
-          openErrorModal("Error al enviar comando", description);
+          const msg = err?.response?.data?.message || err?.message || "Error desconocido";
+          openErrorModal("Error al enviar comando", msg);
         },
       }
     );
+  };
+
+  // --- Iniciar simulador ---
+  const handleStartSimulator = async () => {
+    if (!selectedDevice) {
+      openErrorModal("Selecciona un dispositivo", "Debes elegir un dispositivo primero.");
+      return;
+    }
+
+    try {
+      setIsStartingSimulator(true);
+      const { devicesApi } = await import("@/services/api");
+      const res = await devicesApi.startSimulator(selectedDevice.id);
+
+      openSuccessModal("Simulador iniciado", `Simulador activo para ${selectedDevice.name}`);
+      refetch();
+    } catch (error: any) {
+      openErrorModal("Error al iniciar simulador", error.message);
+    } finally {
+      setIsStartingSimulator(false);
+    }
   };
 
   return (
@@ -57,50 +110,71 @@ export default function CommandsPage() {
         </div>
       </div>
 
-      {/* Usuario autenticado */}
-<Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-        <CardHeader>
-<CardTitle className="text-white">Sesión actual</CardTitle>
-          <CardDescription>
-            Información del usuario autenticado
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm space-y-1">
-          <p>👤 <strong>{user?.username || "Sin usuario"}</strong></p>
-          <p className="text-muted-foreground text-xs">
-            Usa tu sesión para enviar comandos con autenticación segura.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Envío de comandos */}
-<Card className="bg-black/40 border-white/10 backdrop-blur-xl hover:shadow-lg transition-all duration-300">
+      {/* Panel de comandos */}
+      <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Send className="h-5 w-5 text-primary" />
-            Enviar nuevo comando
+            Enviar comando o iniciar simulador
           </CardTitle>
-          <CardDescription>
-            Ingresa el identificador del dispositivo y la instrucción a ejecutar
-          </CardDescription>
+          <CardDescription>Selecciona dispositivo y comando</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Input
-              placeholder="ID del dispositivo"
-              value={deviceId}
-              onChange={(e) => setDeviceId(e.target.value)}
-            />
-            <Input
-              placeholder="Comando (ej: restart, calibrate)"
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-            />
+          {/* Selector de dispositivo */}
+          <div>
+            <label className="block text-sm text-muted-foreground mb-1">Dispositivo</label>
+            <Select onValueChange={setSelectedDeviceKey} disabled={loadingDevices}>
+              <SelectTrigger className="w-full">
+                <SelectValue
+                  placeholder={
+                    loadingDevices
+                      ? "Cargando dispositivos..."
+                      : devices?.length
+                      ? "Seleccionar dispositivo"
+                      : "No hay dispositivos disponibles"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.isArray(devices) && devices.length > 0 ? (
+                  devices.map((d: any, index: number) => (
+                    <SelectItem key={d.id} value={String(index)}>
+                      {d.name || `Dispositivo ${index + 1}`}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" disabled>
+                    No hay dispositivos registrados
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Selector de comando */}
+          <div>
+            <label className="block text-sm text-muted-foreground mb-1">Comando</label>
+            <Select onValueChange={setSelectedCommand}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar comando" />
+              </SelectTrigger>
+              <SelectContent>
+                {commandOptions.map((cmd) => (
+                  <SelectItem key={cmd.value} value={cmd.value}>
+                    {cmd.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Botones */}
+          <div className="flex flex-wrap gap-3 mt-4">
             <Button
-              onClick={handleSend}
-              disabled={sendCommand.isPending}
-              className="flex items-center justify-center gap-2"
+              onClick={handleSendCommand}
+              disabled={sendCommand.isPending || !selectedCommand || !selectedDevice}
+              className="flex items-center gap-2"
             >
               {sendCommand.isPending ? (
                 <>
@@ -108,7 +182,24 @@ export default function CommandsPage() {
                 </>
               ) : (
                 <>
-                  <Send className="h-4 w-4" /> Enviar
+                  <Send className="h-4 w-4" /> Enviar comando
+                </>
+              )}
+            </Button>
+
+            <Button
+              variant="secondary"
+              onClick={handleStartSimulator}
+              disabled={isStartingSimulator || !selectedDevice}
+              className="flex items-center gap-2"
+            >
+              {isStartingSimulator ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Iniciando simulador...
+                </>
+              ) : (
+                <>
+                  <Cpu className="h-4 w-4 text-primary" /> Iniciar simulador
                 </>
               )}
             </Button>
@@ -117,13 +208,11 @@ export default function CommandsPage() {
       </Card>
 
       {/* Historial de comandos */}
-<Card className="bg-black/40 border-white/10 backdrop-blur-xl">
+      <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
         <CardHeader className="flex flex-row justify-between items-center">
           <div>
             <CardTitle>Historial de Comandos</CardTitle>
-            <CardDescription>
-              Últimos comandos enviados a tus dispositivos
-            </CardDescription>
+            <CardDescription>Últimos comandos enviados</CardDescription>
           </div>
           <Button
             variant="outline"
@@ -142,7 +231,7 @@ export default function CommandsPage() {
               <Loader2 className="h-6 w-6 animate-spin mr-2" />
               Cargando historial...
             </div>
-          ) : commands.length > 0 ? (
+          ) : commands?.length ? (
             <ul className="divide-y divide-border rounded-md bg-muted/20">
               {commands.map((cmd: any) => (
                 <li
@@ -153,7 +242,9 @@ export default function CommandsPage() {
                     <p className="font-semibold text-sm">{cmd.command}</p>
                     <p className="text-xs text-muted-foreground">
                       {cmd.device_id || "sin id"} —{" "}
-                      {cmd.timestamp ? new Date(cmd.timestamp).toLocaleString() : "sin fecha"}
+                      {cmd.timestamp
+                        ? new Date(cmd.timestamp).toLocaleString()
+                        : "sin fecha"}
                     </p>
                   </div>
                   <Badge

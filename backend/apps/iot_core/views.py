@@ -35,6 +35,7 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+
 class ReadOnlyIfDebug(permissions.BasePermission):
     """
     Permite acceso READ-ONLY (métodos seguros) sin autenticación cuando DEBUG=True.
@@ -50,134 +51,125 @@ class ReadOnlyIfDebug(permissions.BasePermission):
         return request.user and request.user.is_authenticated
 
 
+
 class DeviceViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de dispositivos.
-    
-    Endpoints:
-    - GET /api/devices/ - Listar dispositivos
-    - POST /api/devices/ - Crear dispositivo
-    - GET /api/devices/{id}/ - Obtener dispositivo
-    - PUT/PATCH /api/devices/{id}/ - Actualizar dispositivo
-    - DELETE /api/devices/{id}/ - Eliminar dispositivo
     """
+
     permission_classes = [ReadOnlyIfDebug]
-    
+
     def get_queryset(self):
-        """
-        Retorna dispositivos visibles para el usuario:
-        - Admin: todos los dispositivos
-        - Autenticado: solo dispositivos de los que es propietario
-        - Anónimo: ninguno
-        """
+        """Filtra los dispositivos visibles según el usuario."""
         user = self.request.user
         is_admin = getattr(user, 'is_admin', False)
 
         if not getattr(user, 'is_authenticated', False):
-            # Usuarios anónimos no ven dispositivos, incluso en DEBUG
             queryset = Device.objects.none()
         elif is_admin:
             queryset = Device.objects.all()
         else:
             queryset = Device.objects.filter(owner=user)
-        
+
         # Filtros
-        device_type = self.request.query_params.get('device_type', None)
+        device_type = self.request.query_params.get('device_type')
         if device_type:
             queryset = queryset.filter(device_type=device_type)
-        
-        status_filter = self.request.query_params.get('status', None)
+
+        status_filter = self.request.query_params.get('status')
         if status_filter:
             queryset = queryset.filter(status=status_filter)
-        
-        is_active = self.request.query_params.get('is_active', None)
+
+        is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
-        
-        # Búsqueda
-        search = self.request.query_params.get('search', None)
+
+        search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(
                 Q(name__icontains=search) |
                 Q(description__icontains=search) |
                 Q(location__icontains=search)
             )
-        
+
+        logger.debug(f"🔍 get_queryset ejecutado por {user.username} → {queryset.count()} dispositivos encontrados")
         return queryset.select_related('owner').order_by('-created_at')
-    
+
     def get_serializer_class(self):
-        """Retorna el serializador apropiado según la acción"""
         if self.action == 'create':
             return DeviceCreateSerializer
         elif self.action == 'list':
             return DeviceListSerializer
         return DeviceSerializer
-    
-    def perform_create(self, serializer):
-        """Crea un dispositivo asignándolo al usuario autenticado"""
-        device = serializer.save()
-        logger.info(f"Dispositivo creado: {device.name} por {self.request.user.username}")
-    
-    def perform_destroy(self, instance):
-        """Elimina un dispositivo de forma definitiva (hard delete)."""
-        name = instance.name
-        instance.delete()
-        logger.warning(f"Dispositivo eliminado: {name} por {getattr(self.request.user, 'username', 'usuario')} ")
 
     def perform_create(self, serializer):
-        """Asigna el propietario del dispositivo al usuario autenticado."""
-        serializer.save(owner=self.request.user)
-    
+        """Crea un dispositivo asignándolo al usuario autenticado"""
+        device = serializer.save(owner=self.request.user)
+        logger.info(f"✅ Dispositivo creado: {device.name} por {self.request.user.username}")
+
+    def perform_destroy(self, instance):
+        """Elimina un dispositivo"""
+        name = instance.name
+        instance.delete()
+        logger.warning(f"⚠️ Dispositivo eliminado: {name} por {getattr(self.request.user, 'username', 'usuario')}")
+
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
-        """Activa un dispositivo desactivado"""
         device = self.get_object()
         device.is_active = True
         device.save()
-        logger.info(f"Dispositivo activado: {device.name}")
+        logger.info(f"🟢 Dispositivo activado: {device.name} ({device.id}) por {request.user.username}")
         return Response({'message': 'Dispositivo activado exitosamente'})
-    
+
     @action(detail=True, methods=['post'])
     def deactivate(self, request, pk=None):
-        """Desactiva un dispositivo"""
         device = self.get_object()
         device.is_active = False
         device.save()
-        logger.info(f"Dispositivo desactivado: {device.name}")
+        logger.info(f"🔴 Dispositivo desactivado: {device.name} ({device.id}) por {request.user.username}")
         return Response({'message': 'Dispositivo desactivado exitosamente'})
 
+    # =======================================================
+    # 🚀 SIMULADOR DE DISPOSITIVOS
+    # =======================================================
     @action(detail=True, methods=['post'], url_path='start-simulator')
     def start_simulator(self, request, pk=None):
         """
-        Inicia el simulador de dispositivo desde el backend.
-
-        POST /api/devices/{id}/start-simulator/
-        Body opcional:
-        - interval: int (segundos, default 5)
-        - device_type: str (sensor/actuator/gateway). Si no se envía, usa el del modelo
+        Inicia el simulador del dispositivo en el servidor remoto.
+        Lanza el script /simulador/device_simulator.py.
         """
+
+        logger.info(f"🟡 [START_SIMULATOR] Request recibida → device_id={pk}, user={request.user}")
+
         try:
             device = self.get_object()
-
-            # Permisos: dueño o admin
             user = request.user
-            if device.owner != user and not user.is_admin:
+            logger.info(f"🔹 Usuario autenticado: {user.username} | Propietario: {device.owner.username}")
+            logger.info(f"🔹 Device seleccionado: {device.name} ({device.id}) tipo={device.device_type}")
+
+            # Permisos
+            if device.owner != user and not getattr(user, 'is_admin', False):
+                logger.warning(f"⛔ Permiso denegado: {user.username} no puede iniciar {device.name}")
                 return Response(
-                    {'error': 'No tienes permiso para iniciar simulador de este dispositivo'},
+                    {'error': 'No tienes permiso para iniciar este simulador.'},
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            interval = int(request.data.get('interval', 5))
-            device_type = request.data.get('device_type') or device.device_type
+            # Ruta absoluta al script del simulador
+            project_root = os.path.dirname(settings.BASE_DIR)
+            simulator_path = os.path.join(project_root, 'simulador', 'device_simulator.py')
+            logger.info(f"📂 Ruta del simulador: {simulator_path}")
 
-            # Construir comando usando el intérprete de Python actual y ruta absoluta del script
-            simulator_path = os.path.join(settings.BASE_DIR, 'simulador', 'device_simulator.py')
             if not os.path.exists(simulator_path):
-                logger.error(f"Script de simulador no encontrado en: {simulator_path}")
+                logger.error(f"❌ Script no encontrado en {simulator_path}")
                 return Response(
-                    {'error': 'Script de simulador no encontrado'},
+                    {'error': f"No se encontró el simulador en {simulator_path}"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
+
+            # Parámetros de simulación
+            interval = int(request.data.get('interval', 5))
+            device_type = request.data.get('device_type', device.device_type)
 
             cmd = [
                 sys.executable,
@@ -186,34 +178,30 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 '--device-type', str(device_type),
                 '--interval', str(interval)
             ]
+            logger.info(f"🧩 Comando final: {' '.join(cmd)}")
 
-            try:
-                # Lanzar proceso en background
-                process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
-                logger.info(f"Simulador iniciado para {device.name} (PID {process.pid})")
-                return Response({
-                    'message': 'Simulador iniciado',
-                    'pid': process.pid,
-                    'device_id': str(device.id),
-                    'device_type': device_type,
-                    'interval': interval
-                })
-            except Exception as e:
-                logger.error(f"Error iniciando simulador: {str(e)}")
-                return Response(
-                    {'error': f'No se pudo iniciar el simulador: {str(e)}'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-        except Device.DoesNotExist:
-            return Response(
-                {'error': 'Dispositivo no encontrado'},
-                status=status.HTTP_404_NOT_FOUND
+            # Ejecutar proceso
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=project_root
             )
+            logger.info(f"🚀 Simulador iniciado → PID {process.pid} para {device.name}")
+
+            return Response({
+                'message': 'Simulador iniciado correctamente',
+                'pid': process.pid,
+                'device_id': str(device.id),
+                'device_type': device_type,
+                'interval': interval
+            })
+
+        except Exception as e:
+            logger.exception(f"🔥 Error al iniciar simulador → {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
 
 
 class TelemetryViewSet(viewsets.ModelViewSet):

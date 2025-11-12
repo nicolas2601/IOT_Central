@@ -8,11 +8,20 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 Para la lista completa de configuraciones y sus valores, ver:
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
+import os
+from logging.handlers import RotatingFileHandler
+
+
 
 from pathlib import Path
 from decouple import config, Csv
 from datetime import timedelta
 from decouple import config
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -360,92 +369,48 @@ MQTT_TOPIC_STATUS = 'dispositivo/{device_id}/estado'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+
     'formatters': {
         'verbose': {
-            'format': '[{levelname}] {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '[{levelname}] {message}',
+            'format': '[{levelname}] {asctime} [{name}] {message}',
             'style': '{',
         },
     },
-    'filters': {
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        },
-    },
+
     'handlers': {
         'console': {
-            'level': 'INFO',
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
-        },
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
             'formatter': 'verbose',
         },
+        'file': {
+            'class': 'logging.FileHandler',
+            'formatter': 'verbose',
+            'filename': LOG_DIR / 'django.log',
+            'level': 'DEBUG',
+        },
     },
+
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'DEBUG',
+    },
+
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': config('LOG_LEVEL', default='INFO'),
-            'propagate': False,
+            'level': 'INFO',
+            'propagate': True,
         },
         'apps': {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': False,
         },
+        # para tus módulos específicos
+        'apps.iot_core.devices': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
     },
 }
-
-
-# ============================================
-# CONFIGURACIÓN DE SEGURIDAD ADICIONAL
-# ============================================
-
-if not DEBUG:
-    # Configuración de seguridad para producción
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-else:
-    # Configuración para desarrollo
-    INTERNAL_IPS = [
-        '127.0.0.1',
-        'localhost',
-    ]
-
-
-# ============================================
-# CONFIGURACIÓN DE SESIONES
-# ============================================
-
-SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-SESSION_CACHE_ALIAS = 'default'
-SESSION_COOKIE_AGE = 86400  # 24 horas
-SESSION_SAVE_EVERY_REQUEST = False
-
-
-# ============================================
-# CONFIGURACIÓN ADICIONAL DEL PROYECTO
-# ============================================
-
-# Tamaño máximo de upload de archivos (10MB)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
-
-# Número máximo de parámetros GET/POST
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
-
-# Crear directorio de logs si no existe
-LOGS_DIR = BASE_DIR / 'logs'
-LOGS_DIR.mkdir(exist_ok=True)
