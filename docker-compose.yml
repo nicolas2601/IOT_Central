@@ -1,91 +1,217 @@
+# Docker Compose para Plataforma IoT - Optimizado para Coolify
+# Configuración completa con labels Traefik perfectos
+
 version: '3.8'
 
 services:
-
-  # Broker MQTT Mosquitto
-  mosquitto:
-    image: eclipse-mosquitto:2.0
-    container_name: iot_mosquitto
-    ports:
-      - "1883:1883"  # Puerto MQTT
-      - "9001:9001"  # Puerto WebSocket
-    volumes:
-      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
-      - mosquitto_data:/mosquitto/data
-      - mosquitto_logs:/mosquitto/log
-    networks:
-      - iot_network
-    healthcheck:
-      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck -W 3"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-
-  # Backend Django
+  # ========================================
+  # BACKEND - Django con Daphne (ASGI)
+  # ========================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: iot_backend
+    container_name: iotcentral-backend
+    restart: unless-stopped
     environment:
-      DEBUG: ${DEBUG:-False}
-      SECRET_KEY: ${SECRET_KEY}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      MQTT_BROKER_HOST: mosquitto
-      MQTT_BROKER_PORT: 1883
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-    ports:
-      - "8000:8000"
+      # Django Core
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG:-False}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      
+      # Base de Datos (Neon PostgreSQL)
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      
+      # MQTT Configuration
+      - MQTT_BROKER_HOST=mosquitto
+      - MQTT_BROKER_PORT=1883
+      
+      # CORS Configuration
+      - CORS_ORIGIN=${FRONTEND_URL}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
     volumes:
-      - backend_static:/app/staticfiles
-      - backend_media:/app/media
       - backend_logs:/app/logs
+      - backend_media:/app/media
+    
     networks:
       - iot_network
+    
     depends_on:
-      mosquitto:
-        condition: service_healthy
-    restart: unless-stopped
+      - mosquitto
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    labels:
+      # Habilitar Traefik
+      - "traefik.enable=true"
+      
+      # Configuración del router
+      - "traefik.http.routers.iotcentral-backend.rule=Host(`${BACKEND_DOMAIN}`)"
+      - "traefik.http.routers.iotcentral-backend.entrypoints=web"
+      - "traefik.http.routers.iotcentral-backend.priority=100"
+      
+      # Configuración del servicio
+      - "traefik.http.services.iotcentral-backend.loadbalancer.server.port=8001"
+      - "traefik.http.services.iotcentral-backend.loadbalancer.healthcheck.path=/api/health/"
+      - "traefik.http.services.iotcentral-backend.loadbalancer.healthcheck.interval=30s"
+      
+      # Headers para API
+      - "traefik.http.middlewares.iotcentral-backend-headers.headers.customrequestheaders.X-Forwarded-Proto=http"
+      - "traefik.http.middlewares.iotcentral-backend-cors.headers.accesscontrolalloworigin=${FRONTEND_URL}"
+      - "traefik.http.middlewares.iotcentral-backend-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS"
+      - "traefik.http.middlewares.iotcentral-backend-cors.headers.accesscontrolallowheaders=Content-Type,Authorization"
+      
+      # Aplicar middlewares
+      - "traefik.http.routers.iotcentral-backend.middlewares=iotcentral-backend-headers,iotcentral-backend-cors"
+      
+      # Coolify labels
+      - "coolify.managed=true"
+      - "coolify.service=backend"
 
-  # Frontend Next.js
+  # ========================================
+  # FRONTEND - Next.js Standalone
+  # ========================================
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: iot_frontend
+      args:
+        - NEXT_PUBLIC_API_URL=${BACKEND_URL}/api
+        - NEXT_PUBLIC_WS_URL=${BACKEND_URL}/ws
+    container_name: iotcentral-frontend
+    restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
-      NODE_ENV: production
-    ports:
-      - "3000:3000"
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${BACKEND_URL}/api
+      - NEXT_PUBLIC_WS_URL=${BACKEND_URL}/ws
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    
     networks:
       - iot_network
+    
     depends_on:
       - backend
-    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    labels:
+      # Habilitar Traefik
+      - "traefik.enable=true"
+      
+      # Configuración del router
+      - "traefik.http.routers.iotcentral-frontend.rule=Host(`${FRONTEND_DOMAIN}`)"
+      - "traefik.http.routers.iotcentral-frontend.entrypoints=web"
+      - "traefik.http.routers.iotcentral-frontend.priority=200"
+      
+      # Configuración del servicio
+      - "traefik.http.services.iotcentral-frontend.loadbalancer.server.port=3000"
+      - "traefik.http.services.iotcentral-frontend.loadbalancer.healthcheck.path=/api/health"
+      - "traefik.http.services.iotcentral-frontend.loadbalancer.healthcheck.interval=30s"
+      
+      # Headers para SPA
+      - "traefik.http.middlewares.iotcentral-frontend-headers.headers.customrequestheaders.X-Forwarded-Proto=http"
+      - "traefik.http.middlewares.iotcentral-frontend-spa.headers.customresponseheaders.Cache-Control=no-cache, no-store, must-revalidate"
+      
+      # Aplicar middlewares
+      - "traefik.http.routers.iotcentral-frontend.middlewares=iotcentral-frontend-headers,iotcentral-frontend-spa"
+      
+      # Coolify labels
+      - "coolify.managed=true"
+      - "coolify.service=frontend"
 
-# Redes personalizadas
+  # ========================================
+  # MOSQUITTO - MQTT Broker
+  # ========================================
+  mosquitto:
+    image: eclipse-mosquitto:2.0.18
+    container_name: iotcentral-mosquitto
+    restart: unless-stopped
+    ports:
+      # Puerto 1883 para MQTT normal (interno)
+      - "1883:1883"
+      # Puerto 9001 para WebSockets (expuesto para frontend)
+      - "9001:9001"
+    
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    
+    networks:
+      - iot_network
+    
+    healthcheck:
+      test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "health", "-m", "test", "-q", "0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    labels:
+      # Habilitar Traefik para WebSocket
+      - "traefik.enable=true"
+      
+      # Router para WebSocket MQTT
+      - "traefik.http.routers.iotcentral-mqtt-ws.rule=Host(`${MQTT_DOMAIN}`)"
+      - "traefik.http.routers.iotcentral-mqtt-ws.entrypoints=web"
+      - "traefik.http.routers.iotcentral-mqtt-ws.priority=50"
+      
+      # Servicio para WebSocket
+      - "traefik.http.services.iotcentral-mqtt-ws.loadbalancer.server.port=9001"
+      
+      # Headers para WebSocket
+      - "traefik.http.middlewares.iotcentral-mqtt-headers.headers.customrequestheaders.X-Forwarded-Proto=http"
+      
+      # Aplicar middlewares
+      - "traefik.http.routers.iotcentral-mqtt-ws.middlewares=iotcentral-mqtt-headers"
+      
+      # TCP Router para MQTT nativo (puerto 1883)
+      - "traefik.tcp.routers.iotcentral-mqtt-tcp.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.iotcentral-mqtt-tcp.entrypoints=mqtt"
+      - "traefik.tcp.services.iotcentral-mqtt-tcp.loadbalancer.server.port=1883"
+      
+      # Coolify labels
+      - "coolify.managed=true"
+      - "coolify.service=mosquitto"
+
+# ========================================
+# REDES
+# ========================================
 networks:
   iot_network:
     driver: bridge
-    name: iot_network
+    name: iotcentral_network
 
-# Volúmenes para persistencia de datos
+# ========================================
+# VOLÚMENES PERSISTENTES
+# ========================================
 volumes:
-  mosquitto_data:
-    name: iot_mosquitto_data
-  mosquitto_logs:
-    name: iot_mosquitto_logs
-  backend_static:
-    name: iot_backend_static
-  backend_media:
-    name: iot_backend_media
+  # Backend
   backend_logs:
-    name: iot_backend_logs
+    name: iotcentral_backend_logs
+  backend_media:
+    name: iotcentral_backend_media
+  
+  # Mosquitto
+  mosquitto_data:
+    name: iotcentral_mosquitto_data
+  mosquitto_logs:
+    name: iotcentral_mosquitto_logs
