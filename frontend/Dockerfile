@@ -20,8 +20,8 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package.json package-lock.json* ./
 
-# Instalar dependencias
-RUN npm ci --only=production && npm cache clean --force
+# Instalar dependencias (incluyendo dev para el build)
+RUN npm install && npm cache clean --force
 
 # Stage 3: Build de la aplicación
 FROM base AS builder
