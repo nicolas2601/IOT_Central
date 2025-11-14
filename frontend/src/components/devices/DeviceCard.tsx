@@ -29,7 +29,7 @@ export const DeviceCard = ({ device, onEdit, onDelete, onView }: DeviceCardProps
   };
 
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className="hover:shadow-lg transition-shadow min-h-[260px]">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">

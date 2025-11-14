@@ -39,10 +39,13 @@ api.interceptors.response.use(
 
     // Errores de red (backend caído, conexión rechazada, DNS, CORS)
     if (isNetworkError) {
-      const message = `No se pudo conectar con el servidor API (${API_URL}). Verifica que esté en ejecución o configura NEXT_PUBLIC_API_URL.`;
-      try {
-        openErrorModal('Conexión rechazada', message);
-      } catch (_) {}
+      const fallbackEnabled = ((process.env.NEXT_PUBLIC_API_FALLBACK ?? '1') === '1');
+      if (!fallbackEnabled) {
+        const message = `No se pudo conectar con el servidor API (${API_URL}). Verifica que esté en ejecución o configura NEXT_PUBLIC_API_URL.`;
+        try {
+          openErrorModal('Conexión rechazada', message);
+        } catch (_) {}
+      }
       return Promise.reject(error);
     }
     

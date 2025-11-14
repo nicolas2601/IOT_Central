@@ -3,7 +3,7 @@
   border-radius: 1.5rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background-color: rgba(0, 0, 0, 0.3);
-  padding: 2rem;
+  padding: 1.25rem; /* reduce padding to give more content width */
   overflow: hidden;
   --mouse-x: 50%;
   --mouse-y: 50%;

@@ -126,7 +126,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Asigna el propietario del dispositivo al usuario autenticado."""
-        serializer.save(owner=self.request.user)
+        serializer.save()
     
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
