@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { mockDevices, mockAlerts, paginated } from '@/lib/fallbackData';
 import { useAuthStore } from '@/store/authStore';
 import { openErrorModal } from '@/store/errorStore';
 import type {
@@ -70,8 +71,11 @@ apiClient.interceptors.response.use(
     // Consideramos error de red solo cuando Axios indica explícitamente ERR_NETWORK
     const isNetworkError = code === 'ERR_NETWORK' && !isCanceled;
     if (isNetworkError) {
-      const message = `No se pudo conectar con el servidor API (${API_URL}). Verifica que esté en ejecución o configura NEXT_PUBLIC_API_URL.`;
-      openErrorModal('Conexión rechazada', message);
+      const fallbackEnabled = ((process.env.NEXT_PUBLIC_API_FALLBACK ?? '1') === '1');
+      if (!fallbackEnabled) {
+        const message = `No se pudo conectar con el servidor API (${API_URL}). Verifica que esté en ejecución o configura NEXT_PUBLIC_API_URL.`;
+        openErrorModal('Conexión rechazada', message);
+      }
       return Promise.reject(error);
     }
 
@@ -171,8 +175,22 @@ export const devicesApi = {
     is_active?: boolean;
     search?: string;
   }): Promise<PaginatedResponse<Device>> => {
-    const response = await apiClient.get<PaginatedResponse<Device>>('/devices/', { params });
-    return response.data;
+    const disableRequests = ((process.env.NEXT_PUBLIC_DISABLE_API_REQUESTS ?? '0') === '1');
+    if (disableRequests) {
+      return paginated<Device>(mockDevices);
+    }
+    try {
+      const response = await apiClient.get<PaginatedResponse<Device>>('/devices/', { params });
+      return response.data;
+    } catch (error) {
+      const code = (error as AxiosError).code;
+      const isNetworkError = code === 'ERR_NETWORK';
+      if (isNetworkError) {
+        // Fallback local cuando el backend no está disponible
+        return paginated<Device>(mockDevices);
+      }
+      throw error;
+    }
   },
 
   /**
@@ -316,8 +334,21 @@ export const alertsApi = {
     device?: string;
     is_active?: boolean;
   }): Promise<PaginatedResponse<Alert>> => {
-    const response = await apiClient.get<PaginatedResponse<Alert>>('/alerts/', { params });
-    return response.data;
+    const disableRequests = ((process.env.NEXT_PUBLIC_DISABLE_API_REQUESTS ?? '0') === '1');
+    if (disableRequests) {
+      return paginated<Alert>(mockAlerts);
+    }
+    try {
+      const response = await apiClient.get<PaginatedResponse<Alert>>('/alerts/', { params });
+      return response.data;
+    } catch (error) {
+      const code = (error as AxiosError).code;
+      const isNetworkError = code === 'ERR_NETWORK';
+      if (isNetworkError) {
+        return paginated<Alert>(mockAlerts);
+      }
+      throw error;
+    }
   },
 
   /**

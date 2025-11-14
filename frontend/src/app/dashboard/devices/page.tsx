@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDevices } from "@/hooks/useDevices";
 import { DeviceCard } from "@/components/devices/DeviceCard";
-import { CreateDeviceModal } from "@/components/devices/CreateDeviceModal";
+import NewDeviceWizard from "@/components/devices/NewDeviceWizard";
 import { EditDeviceModal } from "@/components/devices/EditDeviceModal";
 import { DeleteDeviceDialog } from "@/components/devices/DeleteDeviceDialog";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export default function DevicesPage() {
       </div>
 
       {Array.isArray(devices) && devices.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-6xl mr-auto">
           {devices.map((device: any) => (
             <SpotlightCard key={device.id} className="bg-black/40 border-white/10 backdrop-blur-xl">
               <DeviceCard
@@ -49,8 +49,8 @@ export default function DevicesPage() {
         </p>
       )}
 
-      {/* Modal Crear */}
-      <CreateDeviceModal
+      {/* Wizard Crear con Plantillas (Azure-like) */}
+      <NewDeviceWizard
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreate={async (data) => {
