@@ -410,9 +410,8 @@ LOGGING = {
 # ============================================
 
 # Configuración de proxy y HTTPS
-SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
-SECURE_PROXY_SSL_HEADER_VALUE = config('SECURE_PROXY_SSL_HEADER', default='', cast=str)
-SECURE_PROXY_SSL_HEADER = tuple(SECURE_PROXY_SSL_HEADER_VALUE.split(',')) if SECURE_PROXY_SSL_HEADER_VALUE else None
+SECURE_SSL_REDIRECT = False
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = config('USE_X_FORWARDED_HOST', default=True, cast=bool)
 USE_X_FORWARDED_PORT = config('USE_X_FORWARDED_PORT', default=True, cast=bool)
 
