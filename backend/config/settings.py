@@ -156,6 +156,8 @@ USE_I18N = True
 
 USE_TZ = True
 
+APPEND_SLASH = False
+
 
 # ============================================
 # ARCHIVOS ESTÁTICOS (CSS, JavaScript, Images)
@@ -407,17 +409,26 @@ LOGGING = {
 # CONFIGURACIÓN DE SEGURIDAD ADICIONAL
 # ============================================
 
+# Configuración de proxy y HTTPS
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
+SECURE_PROXY_SSL_HEADER_VALUE = config('SECURE_PROXY_SSL_HEADER', default='', cast=str)
+SECURE_PROXY_SSL_HEADER = tuple(SECURE_PROXY_SSL_HEADER_VALUE.split(',')) if SECURE_PROXY_SSL_HEADER_VALUE else None
+USE_X_FORWARDED_HOST = config('USE_X_FORWARDED_HOST', default=True, cast=bool)
+USE_X_FORWARDED_PORT = config('USE_X_FORWARDED_PORT', default=True, cast=bool)
+
 if not DEBUG:
     # Configuración de seguridad para producción
-    SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    
+    # Solo aplicar HSTS si SSL_REDIRECT está habilitado
+    if SECURE_SSL_REDIRECT:
+        SECURE_HSTS_SECONDS = 31536000
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True
 else:
     # Configuración para desarrollo
     INTERNAL_IPS = [
