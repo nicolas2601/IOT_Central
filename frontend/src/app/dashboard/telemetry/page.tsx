@@ -12,6 +12,7 @@ import { HourlyStacked } from "@/components/telemetry/HourlyStacked";
 import { RadialPanicGauge } from "@/components/telemetry/RadialPanicGauge";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useDevices } from "@/hooks/useDevices";
+import { useSettingsStore } from "@/store/settingsStore";
 import { useAuthStore } from "@/store/authStore";
 import { telemetryApi } from "@/services/api";
 import { ShinyText } from "@/components/animations/ShinyText";
@@ -24,6 +25,7 @@ export default function TelemetryPage() {
   const { devices, isLoading } = useDevices();
   const { accessToken } = useAuthStore();
   const [selectedDevice, setSelectedDevice] = useState<string>("");
+  const { defaultDevice, telemetryRate, smooth } = useSettingsStore();
   const { telemetryData, status, lastError } = useWebSocket(selectedDevice || "", accessToken || "");
   const wsEnabled = !!accessToken && !!selectedDevice;
   const [fallbackData, setFallbackData] = useState<any[]>([]);
@@ -48,10 +50,15 @@ export default function TelemetryPage() {
   }, [wsEnabled, selectedDevice, telemetryData.length]);
 
   useEffect(() => {
-    if (!selectedDevice && devices && devices.length > 0) {
-      setSelectedDevice(devices[0].id);
+    // Si hay preferencia guardada, usarla; si no, tomar el primero
+    if (!selectedDevice) {
+      if (defaultDevice) {
+        setSelectedDevice(defaultDevice);
+      } else if (devices && devices.length > 0) {
+        setSelectedDevice(devices[0].id);
+      }
     }
-  }, [devices, selectedDevice]);
+  }, [devices, selectedDevice, defaultDevice]);
 
   const statusText = useMemo(() => {
     if (!accessToken) return "Inicia sesión para habilitar telemetría en tiempo real";

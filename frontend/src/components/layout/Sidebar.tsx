@@ -52,11 +52,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       href: "/dashboard/commands",
       icon: <Terminal className="h-5 w-5" />,
     },
-    {
-      title: "Configuración",
-      href: "/dashboard/settings",
-      icon: <Settings className="h-5 w-5" />,
-    },
   ];
 
   return (

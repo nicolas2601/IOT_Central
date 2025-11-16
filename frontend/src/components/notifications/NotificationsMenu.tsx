@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { alertsApi } from "@/services/api";
 import type { Alert, PaginatedResponse } from "@/types";
@@ -27,12 +27,41 @@ export default function NotificationsMenu() {
     return results.slice(0, 5);
   }, [data]);
 
+  // Persistimos la última vez que el usuario abrió las notificaciones
+  const [lastSeenAt, setLastSeenAt] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    const raw = window.localStorage.getItem("notificationsLastSeenAt");
+    return raw ? Number(raw) : 0;
+  });
+
+  // Si llegan nuevas alertas, calculamos si hay no vistas
+  const hasUnread = useMemo(() => {
+    if (!items || items.length === 0) return false;
+    return items.some((a) => {
+      const ts = new Date(a.last_triggered || a.created_at).getTime();
+      return ts > lastSeenAt;
+    });
+  }, [items, lastSeenAt]);
+
+  // Al abrir el menú, marcamos como vistas actualizando el timestamp
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      const now = Date.now();
+      setLastSeenAt(now);
+      try {
+        window.localStorage.setItem("notificationsLastSeenAt", String(now));
+      } catch {}
+    }
+  };
+
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
+          {hasUnread && (
+            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
+          )}
           <span className="sr-only">Notificaciones</span>
         </Button>
       </DropdownMenuTrigger>

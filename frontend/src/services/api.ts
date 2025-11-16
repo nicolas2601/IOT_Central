@@ -156,8 +156,18 @@ export const authApi = {
    * Actualizar perfil
    */
   updateProfile: async (data: Partial<User>): Promise<User> => {
-    const response = await apiClient.put<User>('/auth/profile/update/', data);
-    return response.data;
+    // Intentar endpoint /update/ y hacer fallback a /auth/profile/
+    try {
+      const response = await apiClient.put<User>('/auth/profile/update/', data);
+      return response.data;
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 404 || status === 405) {
+        const response2 = await apiClient.put<User>('/auth/profile/', data);
+        return response2.data;
+      }
+      throw error;
+    }
   },
 };
 

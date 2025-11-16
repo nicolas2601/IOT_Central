@@ -76,7 +76,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2">
-                <Avatar className="h-8 w-8 border">
+                <Avatar className="h-8 w-8 border items-center justify-center">
                   <User className="h-4 w-4" />
                 </Avatar>
                 <div className="hidden md:block text-left">
@@ -89,10 +89,6 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => router.push('/dashboard/settings#perfil')}>
-                <User className="mr-2 h-4 w-4" />
-                <span>Perfil</span>
-              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => router.push('/dashboard/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Configuración</span>

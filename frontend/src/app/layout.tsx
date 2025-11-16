@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   title: "Plataforma IoT - Gestión de Dispositivos",
   description: "Plataforma open source para gestión de dispositivos IoT, telemetría en tiempo real y control remoto",
   keywords: ["IoT", "dispositivos", "telemetría", "MQTT", "dashboard"],
+  icons: {
+    icon: "/favicon.ico?v=1",
+    shortcut: "/favicon.ico?v=1",
+    apple: "/favicon.ico?v=1",
+  },
 };
 
 export default function RootLayout({
@@ -19,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={`dark ${inter.className}`}>
+      <body className={`${inter.className} dark`}>
         <Providers>
           {children}
           {/* Modal global de errores */}
