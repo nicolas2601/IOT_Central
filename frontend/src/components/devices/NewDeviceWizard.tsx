@@ -21,6 +21,7 @@ export default function NewDeviceWizard({ open, onClose, onCreate }: NewDeviceWi
   const [selectedTemplate, setSelectedTemplate] = useState<DeviceTemplate | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [simulateServer, setSimulateServer] = useState<boolean>(false);
 
   const reset = () => {
     setStep(1);
@@ -28,6 +29,7 @@ export default function NewDeviceWizard({ open, onClose, onCreate }: NewDeviceWi
     setSelectedTemplate(null);
     setName("");
     setDescription("");
+    setSimulateServer(false);
   };
 
   const close = () => {
@@ -57,6 +59,9 @@ export default function NewDeviceWizard({ open, onClose, onCreate }: NewDeviceWi
             deviceType: selectedTemplate.deviceType,
             properties: selectedTemplate.properties,
             source: "azure-inspired",
+          },
+          simulation: {
+            autoServer: simulateServer,
           },
         };
       }
@@ -127,6 +132,23 @@ export default function NewDeviceWizard({ open, onClose, onCreate }: NewDeviceWi
           </button>
         ))}
       </div>
+      <div className="mt-2 flex items-center justify-between bg-black/40 border border-white/10 rounded p-3">
+        <div>
+          <p className="text-sm text-white/90 font-semibold">Simular automáticamente por el servidor</p>
+          <p className="text-xs text-white/70">Actívalo si deseas que el servidor simule telemetrías para este dispositivo.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setSimulateServer((v) => !v)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${simulateServer ? "bg-blue-600" : "bg-white/20"}`}
+          aria-pressed={simulateServer}
+          aria-label="Toggle simulación automática"
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${simulateServer ? "translate-x-5" : "translate-x-1"}`}
+          />
+        </button>
+      </div>
     </div>
   );
 
@@ -144,6 +166,9 @@ export default function NewDeviceWizard({ open, onClose, onCreate }: NewDeviceWi
         <div className="text-sm text-white/70">
           <p>
             Plantilla: <b>{selectedTemplate.name}</b> ({selectedTemplate.deviceType})
+          </p>
+          <p>
+            Simulación automática por el servidor: <b>{simulateServer ? "Activada" : "Desactivada"}</b>
           </p>
         </div>
       )}

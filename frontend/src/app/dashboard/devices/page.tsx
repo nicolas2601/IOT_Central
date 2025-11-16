@@ -58,6 +58,16 @@ export default function DevicesPage() {
             await createDevice.mutateAsync(data);
             setCreateOpen(false);
             refetch();
+
+            // Si proviene de una plantilla, construimos y mostramos el modal de telemetría
+            const tpl = (data as any)?.metadata?.template;
+            const name = (data as any)?.name ?? "Nuevo dispositivo";
+            if (tpl && Array.isArray(tpl.properties)) {
+              const json = JSON.stringify({ template: tpl, deviceName: name }, null, 2);
+              // setTelemetryJson(json); // REMOVED: no longer used since telemetry modal was removed
+              // setTelemetryDeviceName(name); // REMOVED: no longer used since telemetry modal was removed
+              // setTelemetryOpen(true); // REMOVED: telemetry modal no longer exists
+            }
           } catch (e) {
             console.error("Error creando dispositivo", e);
           }
@@ -104,6 +114,9 @@ export default function DevicesPage() {
         }}
         onCancel={() => setSelected(null)}
       />
+
+      {/* Modal con plantilla de telemetría generada */}
+      {/* Modal de plantilla retirado según nueva preferencia de simulación local por script */}
     </section>
   );
 }

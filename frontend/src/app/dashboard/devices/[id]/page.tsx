@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import type { Device, Telemetry } from "@/types";
 import { resolveDeviceDescription } from "@/lib/device";
+import TelemetryPythonPanel from "@/components/devices/TelemetryPythonPanel";
 
 export default function DeviceDetailPage() {
   const params = useParams<{ id: string }>();
@@ -76,6 +77,15 @@ export default function DeviceDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Sección: Script Python recomendado para simulación local */}
+      {Boolean((device as any)?.metadata?.template) && (
+        <TelemetryPythonPanel
+          deviceId={String(device.id)}
+          deviceName={device.name}
+          template={(device as any).metadata.template}
+        />
+      )}
     </section>
   );
 }
