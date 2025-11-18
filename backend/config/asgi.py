@@ -13,6 +13,8 @@ ASGI (Asynchronous Server Gateway Interface) permite manejar:
 """
 
 import os
+import threading
+import logging
 from django.core.asgi import get_asgi_application
 
 # Configurar el módulo de settings de Django
@@ -26,6 +28,59 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.security.websocket import AllowedHostsOriginValidator
 from apps.iot_core.routing import websocket_urlpatterns
 from .channels_auth import JWTAuthMiddlewareStack
+
+logger = logging.getLogger(__name__)
+
+# Iniciar MQTT listener en background
+def start_mqtt_listener():
+    """Inicia el listener MQTT en un thread separado"""
+    try:
+        from apps.iot_core.mqtt_client import MQTTClient
+        
+        mqtt_client = MQTTClient()
+        
+        def mqtt_loop():
+            """Loop del cliente MQTT"""
+            import time
+            attempt = 0
+            max_attempts = 0  # Infinito
+            
+            while True:
+                try:
+                    if not mqtt_client.connected:
+                        attempt += 1
+                        
+                        if max_attempts > 0 and attempt > max_attempts:
+                            logger.error("MQTT: Número máximo de intentos alcanzado")
+                            break
+                        
+                        logger.info(f"MQTT: Intento de conexión #{attempt}...")
+                        success = mqtt_client.connect()
+                        
+                        if success:
+                            logger.info("✓ MQTT listener iniciado automáticamente")
+                            attempt = 0
+                        else:
+                            logger.warning("MQTT: Error conectando. Reintentando en 5s...")
+                            time.sleep(5)
+                            continue
+                    
+                    time.sleep(1)
+                    
+                except Exception as e:
+                    logger.error(f"Error en MQTT listener: {e}")
+                    time.sleep(5)
+        
+        # Iniciar en thread daemon
+        mqtt_thread = threading.Thread(target=mqtt_loop, daemon=True)
+        mqtt_thread.start()
+        logger.info("Thread MQTT listener iniciado")
+        
+    except Exception as e:
+        logger.error(f"Error iniciando MQTT listener: {e}")
+
+# Iniciar MQTT listener cuando se carga ASGI
+start_mqtt_listener()
 
 # Configuración de la aplicación ASGI con soporte HTTP y WebSocket
 application = ProtocolTypeRouter({

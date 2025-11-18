@@ -104,4 +104,15 @@ export const deviceService = {
     const res = await api.delete(`/devices/${id}/`);
     return res.data;
   },
+  async startSimulator(id: string, options?: { interval?: number }) {
+    const res = await api.post(`/devices/${id}/start-simulator/`, {
+      interval: options?.interval ?? 5,
+    });
+    return res.data;
+  },
+
+  async stopSimulator(id: string) {
+    const res = await api.post(`/devices/${id}/stop-simulator/`);
+    return res.data;
+  },
 };

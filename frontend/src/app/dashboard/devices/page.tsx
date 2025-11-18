@@ -55,18 +55,20 @@ export default function DevicesPage() {
         onClose={() => setCreateOpen(false)}
         onCreate={async (data) => {
           try {
-            await createDevice.mutateAsync(data);
+            const createdDevice = await createDevice.mutateAsync(data);
             setCreateOpen(false);
             refetch();
 
-            // Si proviene de una plantilla, construimos y mostramos el modal de telemetría
-            const tpl = (data as any)?.metadata?.template;
-            const name = (data as any)?.name ?? "Nuevo dispositivo";
-            if (tpl && Array.isArray(tpl.properties)) {
-              const json = JSON.stringify({ template: tpl, deviceName: name }, null, 2);
-              // setTelemetryJson(json); // REMOVED: no longer used since telemetry modal was removed
-              // setTelemetryDeviceName(name); // REMOVED: no longer used since telemetry modal was removed
-              // setTelemetryOpen(true); // REMOVED: telemetry modal no longer exists
+            // Si la simulación automática está activada, iniciar el simulador
+            const simulateServer = (data as any)?.metadata?.simulation?.autoServer;
+            if (simulateServer && createdDevice?.id) {
+              try {
+                const { deviceService } = await import("@/services/deviceService");
+                await deviceService.startSimulator(String(createdDevice.id), { interval: 5 });
+                console.log("✓ Simulador iniciado automáticamente para", createdDevice.name);
+              } catch (simError) {
+                console.error("Error iniciando simulador:", simError);
+              }
             }
           } catch (e) {
             console.error("Error creando dispositivo", e);

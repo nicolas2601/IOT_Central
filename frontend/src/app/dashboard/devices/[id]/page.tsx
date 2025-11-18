@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import type { Device, Telemetry } from "@/types";
 import { resolveDeviceDescription } from "@/lib/device";
 import TelemetryPythonPanel from "@/components/devices/TelemetryPythonPanel";
+import { Play, Square } from "lucide-react";
 
 export default function DeviceDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [device, setDevice] = useState<Device | null>(null);
   const [telemetry, setTelemetry] = useState<Telemetry[]>([]);
+  const [simulatorRunning, setSimulatorRunning] = useState(false);
+  const [loadingSimulator, setLoadingSimulator] = useState(false);
   const deviceId = params?.id as string;
 
   useEffect(() => {
@@ -20,14 +23,63 @@ export default function DeviceDetailPage() {
         const { devicesApi, telemetryApi } = await import("@/services/api");
         const d = await devicesApi.get(deviceId);
         setDevice(d);
-        const t = await devicesApi.getTelemetry(deviceId);
-        setTelemetry(Array.isArray(t) ? t : []);
+        
+        // Obtener telemetría reciente (últimas 24 horas, máximo 10 registros)
+        try {
+          const recentData = await telemetryApi.getRecent(deviceId, { limit: 10, hours: 24 });
+          const t = recentData.results || [];
+          setTelemetry(Array.isArray(t) ? t : []);
+          
+          // Verificar si hay telemetría reciente (indica que el simulador está corriendo)
+          if (Array.isArray(t) && t.length > 0) {
+            const lastTelemetry = t[0];
+            const lastTime = new Date(lastTelemetry.timestamp).getTime();
+            const now = Date.now();
+            // Si la última telemetría es reciente (menos de 60 segundos), el simulador está activo
+            if (now - lastTime < 60000) {
+              setSimulatorRunning(true);
+            }
+          }
+        } catch (telemetryError) {
+          console.warn("No se pudo obtener telemetría reciente:", telemetryError);
+          setTelemetry([]);
+        }
       } catch (e) {
         console.error("Error cargando detalle de dispositivo", e);
       }
     };
     if (deviceId) load();
   }, [deviceId]);
+
+  const handleStartSimulator = async () => {
+    if (!deviceId) return;
+    setLoadingSimulator(true);
+    try {
+      const { deviceService } = await import("@/services/deviceService");
+      await deviceService.startSimulator(deviceId, { interval: 5 });
+      setSimulatorRunning(true);
+      console.log("✓ Simulador iniciado para", device?.name);
+    } catch (error) {
+      console.error("Error iniciando simulador:", error);
+    } finally {
+      setLoadingSimulator(false);
+    }
+  };
+
+  const handleStopSimulator = async () => {
+    if (!deviceId) return;
+    setLoadingSimulator(true);
+    try {
+      const { deviceService } = await import("@/services/deviceService");
+      await deviceService.stopSimulator(deviceId);
+      setSimulatorRunning(false);
+      console.log("✓ Simulador detenido para", device?.name);
+    } catch (error) {
+      console.error("Error deteniendo simulador:", error);
+    } finally {
+      setLoadingSimulator(false);
+    }
+  };
 
   if (!device) return <p className="mt-6">Cargando dispositivo...</p>;
 
@@ -40,8 +92,29 @@ export default function DeviceDetailPage() {
 
       <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
         <CardHeader>
-          <CardTitle>Información del Dispositivo</CardTitle>
-          <CardDescription>ID: {String(device.id)}</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Información del Dispositivo</CardTitle>
+              <CardDescription>ID: {String(device.id)}</CardDescription>
+            </div>
+            {simulatorRunning ? (
+              <Button
+                onClick={handleStopSimulator}
+                disabled={loadingSimulator}
+                className="bg-red-600 hover:bg-red-500 text-white"
+              >
+                <Square className="w-4 h-4 mr-2" /> {loadingSimulator ? "Deteniendo..." : "Parar Simulador"}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleStartSimulator}
+                disabled={loadingSimulator}
+                className="bg-blue-600 hover:bg-blue-500 text-white"
+              >
+                <Play className="w-4 h-4 mr-2" /> {loadingSimulator ? "Iniciando..." : "Iniciar Simulador"}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 md:grid-cols-2">

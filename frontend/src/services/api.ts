@@ -297,6 +297,17 @@ export const telemetryApi = {
     const response = await apiClient.get<TelemetryStats>(`/telemetry/statistics/${deviceId}/`, { params });
     return response.data;
   },
+
+  /**
+   * Obtener telemetría reciente de un dispositivo
+   */
+  getRecent: async (deviceId: string, params?: {
+    limit?: number;
+    hours?: number;
+  }): Promise<{ results: Telemetry[]; count: number }> => {
+    const response = await apiClient.get<{ results: Telemetry[]; count: number }>(`/telemetry/${deviceId}/recent/`, { params });
+    return response.data;
+  },
 };
 
 // ============================================

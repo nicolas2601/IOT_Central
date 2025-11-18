@@ -32,6 +32,10 @@ urlpatterns = [
          views.DeviceTelemetryView.as_view(), 
          name='device-telemetry'),
     
+    path('telemetry/<uuid:device_id>/recent/', 
+         views.RecentTelemetryView.as_view(), 
+         name='telemetry-recent'),
+    
     path('devices/<uuid:pk>/send-command/', 
          views.SendCommandView.as_view(), 
          name='device-send-command'),

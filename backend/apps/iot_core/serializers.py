@@ -10,6 +10,13 @@ Define los serializadores para:
 from rest_framework import serializers
 from django.utils import timezone
 from .models import Device, Telemetry, Command, Alert
+import subprocess
+import sys
+import os
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DeviceSerializer(serializers.ModelSerializer):
@@ -72,7 +79,57 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
         """Crea un dispositivo asignándolo al usuario autenticado"""
         user = self.context['request'].user
         device = Device.objects.create(owner=user, **validated_data)
+        
+        # Verificar si debe iniciarse la simulación automática
+        metadata = validated_data.get('metadata', {})
+        if isinstance(metadata, dict):
+            simulation_config = metadata.get('simulation', {})
+            if simulation_config.get('autoServer', False):
+                self._start_simulator_async(device)
+        
         return device
+    
+    def _start_simulator_async(self, device):
+        """Inicia el simulador en un subproceso para el dispositivo"""
+        try:
+            simulator_path = os.path.join(settings.BASE_DIR, 'device_simulator.py')
+            if not os.path.exists(simulator_path):
+                logger.error(f"Script de simulador no encontrado en: {simulator_path}")
+                return
+            
+            device_type = device.device_type or 'sensor'
+            interval = 5  # Intervalo por defecto
+            
+            # Obtener propiedades de plantilla si existen
+            import json
+            template_properties = []
+            metadata = device.metadata or {}
+            if isinstance(metadata, dict):
+                template = metadata.get('template', {})
+                if isinstance(template, dict):
+                    template_properties = template.get('properties', [])
+            
+            template_properties_json = json.dumps(template_properties)
+            
+            cmd = [
+                sys.executable,
+                simulator_path,
+                '--device-id', str(device.id),
+                '--device-type', str(device_type),
+                '--interval', str(interval),
+                '--template-properties', template_properties_json
+            ]
+            
+            # Lanzar proceso en background sin bloquear
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True  # Crear nueva sesión para evitar que se cierre con el padre
+            )
+            logger.info(f"✓ Simulador iniciado automáticamente para {device.name} (PID {process.pid})")
+        except Exception as e:
+            logger.error(f"✗ Error iniciando simulador automático: {str(e)}")
 
 
 class DeviceListSerializer(serializers.ModelSerializer):

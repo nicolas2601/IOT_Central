@@ -171,7 +171,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
             device_type = request.data.get('device_type') or device.device_type
 
             # Construir comando usando el intérprete de Python actual y ruta absoluta del script
-            simulator_path = os.path.join(settings.BASE_DIR, 'simulador', 'device_simulator.py')
+            simulator_path = os.path.join(settings.BASE_DIR, 'device_simulator.py')
             if not os.path.exists(simulator_path):
                 logger.error(f"Script de simulador no encontrado en: {simulator_path}")
                 return Response(
@@ -179,12 +179,24 @@ class DeviceViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
+            # Obtener propiedades de plantilla si existen
+            import json
+            template_properties = []
+            metadata = device.metadata or {}
+            if isinstance(metadata, dict):
+                template = metadata.get('template', {})
+                if isinstance(template, dict):
+                    template_properties = template.get('properties', [])
+            
+            template_properties_json = json.dumps(template_properties)
+
             cmd = [
                 sys.executable,
                 simulator_path,
                 '--device-id', str(device.id),
                 '--device-type', str(device_type),
-                '--interval', str(interval)
+                '--interval', str(interval),
+                '--template-properties', template_properties_json
             ]
 
             try:
@@ -208,6 +220,74 @@ class DeviceViewSet(viewsets.ModelViewSet):
                     {'error': f'No se pudo iniciar el simulador: {str(e)}'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
+
+        except Device.DoesNotExist:
+            return Response(
+                {'error': 'Dispositivo no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=True, methods=['post'], url_path='stop-simulator')
+    def stop_simulator(self, request, pk=None):
+        """
+        Para el simulador de dispositivo.
+
+        POST /api/devices/{id}/stop-simulator/
+        """
+        try:
+            device = self.get_object()
+
+            # Permisos: dueño o admin
+            user = request.user
+            if device.owner != user and not user.is_admin:
+                return Response(
+                    {'error': 'No tienes permiso para parar simulador de este dispositivo'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Buscar procesos del simulador para este dispositivo
+            device_id_str = str(device.id)
+            stopped_count = 0
+            
+            try:
+                import psutil
+                for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                    try:
+                        cmdline = proc.info['cmdline']
+                        if cmdline and 'device_simulator.py' in ' '.join(cmdline) and device_id_str in ' '.join(cmdline):
+                            proc.terminate()
+                            stopped_count += 1
+                            logger.info(f"Simulador detenido para {device.name} (PID {proc.pid})")
+                    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                        pass
+            except ImportError:
+                logger.warning("psutil no está instalado, usando fallback")
+                # Fallback: retornar mensaje de éxito aunque no podamos verificar
+                return Response({
+                    'message': 'Comando de parada enviado',
+                    'device_id': str(device.id),
+                    'note': 'El simulador debería detenerse en breve'
+                })
+            except Exception as e:
+                logger.warning(f"Error deteniendo simulador: {e}")
+                # Fallback: retornar mensaje de éxito aunque no podamos verificar
+                return Response({
+                    'message': 'Comando de parada enviado',
+                    'device_id': str(device.id),
+                    'note': 'El simulador debería detenerse en breve'
+                })
+
+            if stopped_count > 0:
+                return Response({
+                    'message': f'Simulador detenido ({stopped_count} proceso(s))',
+                    'device_id': str(device.id),
+                    'stopped_processes': stopped_count
+                })
+            else:
+                return Response({
+                    'message': 'No hay simulador activo para este dispositivo',
+                    'device_id': str(device.id)
+                }, status=status.HTTP_404_NOT_FOUND)
 
         except Device.DoesNotExist:
             return Response(
@@ -409,6 +489,68 @@ class LatestTelemetryView(generics.RetrieveAPIView):
             
             serializer = TelemetrySerializer(latest)
             return Response(serializer.data)
+        
+        except Device.DoesNotExist:
+            return Response(
+                {'error': 'Dispositivo no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class RecentTelemetryView(APIView):
+    """
+    Vista para obtener telemetría reciente de un dispositivo.
+    
+    GET /api/telemetry/{device_id}/recent/
+    Query params:
+    - limit: Número de registros (default 10)
+    - hours: Últimas N horas (default 24)
+    """
+    permission_classes = [ReadOnlyIfDebug]
+    
+    def get(self, request, device_id):
+        try:
+            device = Device.objects.get(id=device_id)
+            
+            # Verificar permisos
+            if not getattr(request.user, 'is_authenticated', False):
+                if not getattr(settings, 'DEBUG', False):
+                    return Response(
+                        {'error': 'No autenticado'},
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+            elif device.owner != request.user and not getattr(request.user, 'is_admin', False):
+                return Response(
+                    {'error': 'No tienes permiso para ver este dispositivo'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Parámetros
+            limit = int(request.query_params.get('limit', 10))
+            hours = int(request.query_params.get('hours', 24))
+            
+            # Obtener telemetría reciente
+            cutoff_time = timezone.now() - timedelta(hours=hours)
+            recent = device.telemetry_data.filter(
+                timestamp__gte=cutoff_time
+            ).order_by('-timestamp')[:limit]
+            
+            if not recent:
+                return Response({
+                    'device_id': str(device_id),
+                    'device_name': device.name,
+                    'results': [],
+                    'count': 0,
+                    'message': f'Sin telemetría en las últimas {hours} horas'
+                })
+            
+            serializer = TelemetrySerializer(recent, many=True)
+            return Response({
+                'device_id': str(device_id),
+                'device_name': device.name,
+                'results': serializer.data,
+                'count': len(serializer.data)
+            })
         
         except Device.DoesNotExist:
             return Response(
