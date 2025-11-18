@@ -46,9 +46,9 @@ export function buildPythonSimulatorScript(fields: TelemetryField[], deviceId: s
   lines.push("import sys");
   lines.push("try:\n    import paho.mqtt.client as mqtt\nexcept ImportError:\n    print('✗ paho-mqtt no está instalado. Ejecuta: pip install paho-mqtt')\n    sys.exit(1)\n");
 
-  lines.push("\nDEFAULT_BROKER_HOST = 'localhost'");
+  lines.push("\nDEFAULT_BROKER_HOST = 'iotcentral.duckdns.org'");
   lines.push("DEFAULT_BROKER_PORT = 1883");
-  lines.push("DEFAULT_INTERVAL = 2  # segundos\n");
+  lines.push("DEFAULT_INTERVAL = 3  # segundos\n");
 
   lines.push("def build_sample():");
   lines.push("    " + "# Construye una muestra de telemetría basada en las métricas definidas");
