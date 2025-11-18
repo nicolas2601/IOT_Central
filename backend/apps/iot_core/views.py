@@ -258,31 +258,40 @@ class DeviceViewSet(viewsets.ModelViewSet):
             
             try:
                 import psutil
+                import signal
+                import os
+                
                 for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                     try:
                         cmdline = proc.info['cmdline']
                         if cmdline and 'device_simulator.py' in ' '.join(cmdline) and device_id_str in ' '.join(cmdline):
-                            proc.terminate()
-                            stopped_count += 1
-                            logger.info(f"Simulador detenido para {device.name} (PID {proc.pid})")
+                            try:
+                                # Intentar terminar con SIGTERM primero
+                                proc.terminate()
+                                # Esperar a que se termine
+                                proc.wait(timeout=3)
+                                stopped_count += 1
+                                logger.info(f"✓ Simulador detenido para {device.name} (PID {proc.pid})")
+                            except psutil.TimeoutExpired:
+                                # Si no se termina, usar SIGKILL
+                                proc.kill()
+                                stopped_count += 1
+                                logger.warning(f"⚠ Simulador forzadamente detenido para {device.name} (PID {proc.pid})")
                     except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                         pass
+                        
             except ImportError:
-                logger.warning("psutil no está instalado, usando fallback")
-                # Fallback: retornar mensaje de éxito aunque no podamos verificar
-                return Response({
-                    'message': 'Comando de parada enviado',
-                    'device_id': str(device.id),
-                    'note': 'El simulador debería detenerse en breve'
-                })
+                logger.error("psutil no está instalado")
+                return Response(
+                    {'error': 'No se puede detener el simulador: psutil no instalado'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
             except Exception as e:
-                logger.warning(f"Error deteniendo simulador: {e}")
-                # Fallback: retornar mensaje de éxito aunque no podamos verificar
-                return Response({
-                    'message': 'Comando de parada enviado',
-                    'device_id': str(device.id),
-                    'note': 'El simulador debería detenerse en breve'
-                })
+                logger.error(f"✗ Error deteniendo simulador: {e}")
+                return Response(
+                    {'error': f'Error deteniendo simulador: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
             if stopped_count > 0:
                 return Response({
