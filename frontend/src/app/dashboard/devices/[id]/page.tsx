@@ -96,18 +96,30 @@ export default function DeviceDetailPage() {
     try {
       const { deviceService } = await import("@/services/deviceService");
       // Intento principal
-      const res1 = await deviceService.stopSimulator(deviceId);
-      console.log("✓ Parada solicitada (1)", res1);
-      // Intentos adicionales (hasta 3) si siguiera activo
+      try {
+        const res1 = await deviceService.stopSimulator(deviceId);
+        console.log("✓ Parada solicitada (1)", res1);
+      } catch (err: any) {
+        // Si es 404 (no hay simulador), es esperado
+        if (err?.response?.status !== 404) {
+          throw err;
+        }
+      }
+      
+      // Intentos adicionales (hasta 2) si siguiera activo
       for (let i = 0; i < 2; i++) {
         await new Promise((r) => setTimeout(r, 800));
         try {
           const resTry = await deviceService.stopSimulator(deviceId);
           console.log(`✓ Parada solicitada (${i + 2})`, resTry);
-        } catch (_) {
-          // continuar
+        } catch (err: any) {
+          // Si es 404, ignorar; si es otro error, continuar
+          if (err?.response?.status !== 404) {
+            console.warn(`Intento ${i + 2} falló:`, err);
+          }
         }
       }
+      
       // Marcar estado deseado OFF y pausar telemetría en UI
       setSimulatorRunning(false);
       setUserWantsSimulatorOn(false);
