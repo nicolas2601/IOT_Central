@@ -20,6 +20,10 @@ import { TextType } from "@/components/animations/TextType";
 import { FadeContent } from "@/components/animations/FadeContent";
 import { ClickSpark } from "@/components/animations/ClickSpark";
 import { StarBorder } from "@/components/animations/StarBorder";
+import { StatisticsCards } from "@/components/telemetry/StatisticsCards";
+import { TrendAreaChart } from "@/components/telemetry/TrendAreaChart";
+import { MultiMetricComparison } from "@/components/telemetry/MultiMetricComparison";
+import { DistributionChart } from "@/components/telemetry/DistributionChart";
 
 export default function TelemetryPage() {
   const { devices, isLoading } = useDevices();
@@ -152,23 +156,62 @@ export default function TelemetryPage() {
             <div className="bg-black/40 border-white/10 backdrop-blur-xl rounded-xl p-2">
               <Card className="bg-transparent border-transparent">
                 <CardHeader>
-                  <CardTitle className="text-white">Analítica</CardTitle>
-                  <CardDescription>KPIs y gráficas avanzadas al estilo Azure</CardDescription>
+                  <CardTitle className="text-white">Analítica Avanzada</CardTitle>
+                  <CardDescription>Dashboard completo con múltiples visualizaciones en tiempo real</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <TelemetryKpis telemetryData={analyticsData} />
+                  {/* KPIs principales */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-semibold text-white/90">Indicadores Clave</div>
+                    <TelemetryKpis telemetryData={analyticsData} />
+                  </div>
+
+                  {/* Estadísticas detalladas */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-semibold text-white/90">Estadísticas de Métrica Principal</div>
+                    <StatisticsCards telemetryData={analyticsData} />
+                  </div>
+
+                  {/* Selector de métricas */}
                   <div className="space-y-3">
-                    <div className="text-xs text-white/70">Selecciona métricas para las series</div>
+                    <div className="text-xs text-white/70">Selecciona métricas para análisis personalizado</div>
                     <MetricSelector telemetryData={analyticsData} onChange={setSelectedMetrics} max={3} />
                   </div>
-                  <AdvancedCharts telemetryData={analyticsData} selectedKeys={selectedMetrics} />
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    <HourlyStacked telemetryData={analyticsData} />
-                    <RadialPanicGauge telemetryData={analyticsData} />
+
+                  {/* Gráficas avanzadas */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-semibold text-white/90">Series Temporales</div>
+                    <AdvancedCharts telemetryData={analyticsData} selectedKeys={selectedMetrics} />
                   </div>
+
+                  {/* Tendencia y comparativa */}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <TrendAreaChart telemetryData={analyticsData} />
+                    <MultiMetricComparison telemetryData={analyticsData} />
+                  </div>
+
+                  {/* Distribución y eventos por hora */}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <DistributionChart telemetryData={analyticsData} />
+                    <HourlyStacked telemetryData={analyticsData} />
+                  </div>
+
+                  {/* Gauge de pánico */}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <RadialPanicGauge telemetryData={analyticsData} />
+                    <div className="rounded-xl p-4 bg-gradient-to-br from-slate-900/30 to-slate-900/30 border border-white/10 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-sm text-white/70 mb-2">Muestras en buffer</div>
+                        <div className="text-3xl font-bold text-white">{analyticsData.length}</div>
+                        <div className="text-xs text-white/50 mt-1">últimas {Math.min(analyticsData.length, 100)} muestras</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tabla de eventos */}
                   <div className="space-y-3">
-                    <div className="text-sm text-white/80">Eventos recientes</div>
-                    <EventTable telemetryData={analyticsData} />
+                    <div className="text-sm font-semibold text-white/90">Eventos Recientes</div>
+                    <EventTable telemetryData={analyticsData} limit={50} />
                   </div>
                 </CardContent>
               </Card>
