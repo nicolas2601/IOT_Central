@@ -167,8 +167,12 @@ class DeviceViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            interval = int(request.data.get('interval', 5))
+            interval = int(request.data.get('interval', 4))
             device_type = request.data.get('device_type') or device.device_type
+
+            # Obtener configuración del broker MQTT
+            broker_host = getattr(settings, 'MQTT_BROKER_HOST', 'localhost')
+            broker_port = getattr(settings, 'MQTT_BROKER_PORT', 1883)
 
             # Construir comando usando el intérprete de Python actual y ruta absoluta del script
             simulator_path = os.path.join(settings.BASE_DIR, 'device_simulator.py')
@@ -195,6 +199,8 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 simulator_path,
                 '--device-id', str(device.id),
                 '--device-type', str(device_type),
+                '--broker', str(broker_host),
+                '--port', str(broker_port),
                 '--interval', str(interval),
                 '--template-properties', template_properties_json
             ]
@@ -206,13 +212,14 @@ class DeviceViewSet(viewsets.ModelViewSet):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE
                 )
-                logger.info(f"Simulador iniciado para {device.name} (PID {process.pid})")
+                logger.info(f"Simulador iniciado para {device.name} (PID {process.pid}) - Broker: {broker_host}:{broker_port}")
                 return Response({
                     'message': 'Simulador iniciado',
                     'pid': process.pid,
                     'device_id': str(device.id),
                     'device_type': device_type,
-                    'interval': interval
+                    'interval': interval,
+                    'broker': f"{broker_host}:{broker_port}"
                 })
             except Exception as e:
                 logger.error(f"Error iniciando simulador: {str(e)}")

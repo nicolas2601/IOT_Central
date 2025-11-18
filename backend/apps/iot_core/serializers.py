@@ -98,7 +98,11 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
                 return
             
             device_type = device.device_type or 'sensor'
-            interval = 5  # Intervalo por defecto
+            interval = 4  # Intervalo por defecto (4 segundos)
+            
+            # Obtener configuración del broker MQTT
+            broker_host = getattr(settings, 'MQTT_BROKER_HOST', 'localhost')
+            broker_port = getattr(settings, 'MQTT_BROKER_PORT', 1883)
             
             # Obtener propiedades de plantilla si existen
             import json
@@ -116,6 +120,8 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
                 simulator_path,
                 '--device-id', str(device.id),
                 '--device-type', str(device_type),
+                '--broker', str(broker_host),
+                '--port', str(broker_port),
                 '--interval', str(interval),
                 '--template-properties', template_properties_json
             ]
@@ -127,7 +133,7 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
                 stderr=subprocess.PIPE,
                 start_new_session=True  # Crear nueva sesión para evitar que se cierre con el padre
             )
-            logger.info(f"✓ Simulador iniciado automáticamente para {device.name} (PID {process.pid})")
+            logger.info(f"✓ Simulador iniciado automáticamente para {device.name} (PID {process.pid}) - Broker: {broker_host}:{broker_port}")
         except Exception as e:
             logger.error(f"✗ Error iniciando simulador automático: {str(e)}")
 
