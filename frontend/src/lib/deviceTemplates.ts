@@ -20,13 +20,6 @@ export type DeviceTemplate = {
 // Catálogo de plantillas inspirado en Azure IoT Central
 export const DEVICE_TEMPLATES: DeviceTemplate[] = [
   {
-    id: 'none',
-    name: 'Sin asignar',
-    description: 'Crear dispositivo sin plantilla y sin restricciones predefinidas.',
-    deviceType: 'sensor',
-    properties: [],
-  },
-  {
     id: 'boton-panico',
     name: 'Botón de Pánico',
     description: 'Dispositivo con evento de pánico (presionado/no).',

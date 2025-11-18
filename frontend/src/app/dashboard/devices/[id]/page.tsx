@@ -15,7 +15,11 @@ export default function DeviceDetailPage() {
   const [telemetry, setTelemetry] = useState<Telemetry[]>([]);
   const [simulatorRunning, setSimulatorRunning] = useState(false);
   const [loadingSimulator, setLoadingSimulator] = useState(false);
+  // Control de estado deseado por el usuario y pausa de telemetría en UI
+  const [userWantsSimulatorOn, setUserWantsSimulatorOn] = useState<null | boolean>(null);
+  const [telemetryPaused, setTelemetryPaused] = useState(false);
   const deviceId = params?.id as string;
+  const switchOn = userWantsSimulatorOn !== null ? userWantsSimulatorOn : simulatorRunning;
 
   useEffect(() => {
     const load = async () => {
@@ -23,6 +27,17 @@ export default function DeviceDetailPage() {
         const { devicesApi, telemetryApi } = await import("@/services/api");
         const d = await devicesApi.get(deviceId);
         setDevice(d);
+        // Respetar preferencia previa del usuario (persistida)
+        try {
+          const pausedFlag = localStorage.getItem(`simulator_paused:${deviceId}`);
+          if (pausedFlag === '1') {
+            setUserWantsSimulatorOn(false);
+            setTelemetryPaused(true);
+          } else if (pausedFlag === '0') {
+            setUserWantsSimulatorOn(true);
+            setTelemetryPaused(false);
+          }
+        } catch (_) {}
         
         // Obtener telemetría reciente (últimas 24 horas, máximo 10 registros)
         try {
@@ -30,14 +45,17 @@ export default function DeviceDetailPage() {
           const t = recentData.results || [];
           setTelemetry(Array.isArray(t) ? t : []);
           
-          // Verificar si hay telemetría reciente (indica que el simulador está corriendo)
-          if (Array.isArray(t) && t.length > 0) {
-            const lastTelemetry = t[0];
-            const lastTime = new Date(lastTelemetry.timestamp).getTime();
-            const now = Date.now();
-            // Si la última telemetría es reciente (menos de 60 segundos), el simulador está activo
-            if (now - lastTime < 60000) {
-              setSimulatorRunning(true);
+          // Verificar si hay telemetría reciente SOLO si el usuario
+          // no ha forzado estado OFF (userWantsSimulatorOn === false)
+          if (!telemetryPaused && userWantsSimulatorOn !== false) {
+            if (Array.isArray(t) && t.length > 0) {
+              const lastTelemetry = t[0];
+              const lastTime = new Date(lastTelemetry.timestamp).getTime();
+              const now = Date.now();
+              // Si la última telemetría es reciente (menos de 60 segundos), inferimos actividad
+              if (now - lastTime < 60000) {
+                setSimulatorRunning(true);
+              }
             }
           }
         } catch (telemetryError) {
@@ -58,6 +76,12 @@ export default function DeviceDetailPage() {
       const { deviceService } = await import("@/services/deviceService");
       await deviceService.startSimulator(deviceId, { interval: 5 });
       setSimulatorRunning(true);
+      setUserWantsSimulatorOn(true);
+      setTelemetryPaused(false);
+      try {
+        localStorage.setItem(`simulator_paused:${deviceId}`, '0');
+        window.dispatchEvent(new CustomEvent('simulator-toggle', { detail: { deviceId, paused: false } }));
+      } catch (_) {}
       console.log("✓ Simulador iniciado para", device?.name);
     } catch (error) {
       console.error("Error iniciando simulador:", error);
@@ -71,9 +95,28 @@ export default function DeviceDetailPage() {
     setLoadingSimulator(true);
     try {
       const { deviceService } = await import("@/services/deviceService");
-      await deviceService.stopSimulator(deviceId);
+      // Intento principal
+      const res1 = await deviceService.stopSimulator(deviceId);
+      console.log("✓ Parada solicitada (1)", res1);
+      // Intentos adicionales (hasta 3) si siguiera activo
+      for (let i = 0; i < 2; i++) {
+        await new Promise((r) => setTimeout(r, 800));
+        try {
+          const resTry = await deviceService.stopSimulator(deviceId);
+          console.log(`✓ Parada solicitada (${i + 2})`, resTry);
+        } catch (_) {
+          // continuar
+        }
+      }
+      // Marcar estado deseado OFF y pausar telemetría en UI
       setSimulatorRunning(false);
-      console.log("✓ Simulador detenido para", device?.name);
+      setUserWantsSimulatorOn(false);
+      setTelemetryPaused(true);
+      try {
+        localStorage.setItem(`simulator_paused:${deviceId}`, '1');
+        window.dispatchEvent(new CustomEvent('simulator-toggle', { detail: { deviceId, paused: true } }));
+      } catch (_) {}
+      console.log("✓ Simulador marcado como OFF y telemetría pausada en UI para", device?.name);
     } catch (error) {
       console.error("Error deteniendo simulador:", error);
     } finally {
@@ -97,22 +140,36 @@ export default function DeviceDetailPage() {
               <CardTitle>Información del Dispositivo</CardTitle>
               <CardDescription>ID: {String(device.id)}</CardDescription>
             </div>
-            {simulatorRunning ? (
-              <Button
-                onClick={handleStopSimulator}
-                disabled={loadingSimulator}
-                className="bg-red-600 hover:bg-red-500 text-white"
-              >
-                <Square className="w-4 h-4 mr-2" /> {loadingSimulator ? "Deteniendo..." : "Parar Simulador"}
-              </Button>
-            ) : (
-              <Button
-                onClick={handleStartSimulator}
-                disabled={loadingSimulator}
-                className="bg-blue-600 hover:bg-blue-500 text-white"
-              >
-                <Play className="w-4 h-4 mr-2" /> {loadingSimulator ? "Iniciando..." : "Iniciar Simulador"}
-              </Button>
+            {Boolean((device as any)?.metadata?.template) && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-white/80">Simulador</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (loadingSimulator) return;
+                    if (switchOn) {
+                      handleStopSimulator();
+                    } else {
+                      handleStartSimulator();
+                    }
+                  }}
+                  disabled={loadingSimulator}
+                  aria-pressed={switchOn}
+                  aria-label="Alternar simulador"
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors border ${
+                    switchOn ? "bg-violet-600 border-violet-500" : "bg-white/20 border-white/20"
+                  } ${loadingSimulator ? "opacity-60 cursor-not-allowed" : "hover:bg-violet-500/70"}`}
+                >
+                  <span
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                      switchOn ? "translate-x-7" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className={`text-xs ${switchOn ? "text-violet-300" : "text-white/60"}`}>
+                  {loadingSimulator ? (switchOn ? "Deteniendo..." : "Iniciando...") : (switchOn ? "ON" : "OFF")}
+                </span>
+              </div>
             )}
           </div>
         </CardHeader>
@@ -136,7 +193,7 @@ export default function DeviceDetailPage() {
           <CardDescription>Últimos registros</CardDescription>
         </CardHeader>
         <CardContent>
-          {telemetry.length ? (
+          {!telemetryPaused && telemetry.length ? (
             <ul className="space-y-2 text-sm">
               {telemetry.slice(0, 20).map((t) => (
                 <li key={String(t.id)} className="flex justify-between border-b border-white/10 pb-1">
@@ -146,19 +203,27 @@ export default function DeviceDetailPage() {
               ))}
             </ul>
           ) : (
-            <p className="text-white/70">Sin telemetría.</p>
+            <p className="text-white/70">
+              {telemetryPaused ? "Telemetría detenida." : "Sin telemetría."}
+            </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Sección: Script Python recomendado para simulación local */}
-      {Boolean((device as any)?.metadata?.template) && (
-        <TelemetryPythonPanel
-          deviceId={String(device.id)}
-          deviceName={device.name}
-          template={(device as any).metadata.template}
-        />
-      )}
+      {/* Script Python recomendado SOLO para dispositivos "Generar uno propio" */}
+      {(() => {
+        const md: any = (device as any)?.metadata || {};
+        const customProps = md?.customTelemetry?.properties;
+        const isCustom = Array.isArray(customProps) && customProps.length > 0;
+        if (!isCustom) return null;
+        return (
+          <TelemetryPythonPanel
+            deviceId={String(device.id)}
+            deviceName={device.name}
+            properties={customProps}
+          />
+        );
+      })()}
     </section>
   );
 }

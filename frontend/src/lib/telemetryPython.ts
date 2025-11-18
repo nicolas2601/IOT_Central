@@ -1,8 +1,18 @@
-import type { DeviceTemplate, TelemetryProperty } from "@/lib/deviceTemplates";
+// Generador de script Python para simular telemetría vía MQTT.
+// No depende de plantillas; acepta una lista de campos de telemetría.
+export type TelemetryField = {
+  displayName: string;
+  name: string;
+  unit?: string;
+  min?: number;
+  max?: number;
+  type?: 'number' | 'boolean' | 'string';
+  notes?: string;
+};
 
 const sanitizeName = (name: string) => name.replace(/[^a-zA-Z0-9_]/g, "_");
 
-function pythonValueForProperty(prop: TelemetryProperty): string {
+function pythonValueForProperty(prop: TelemetryField): string {
   const name = sanitizeName(prop.name);
   const t = prop.type ?? "number";
   if (t === "boolean") return `random.choice([True, False])`;
@@ -23,12 +33,12 @@ function pythonValueForProperty(prop: TelemetryProperty): string {
   return `round(random.uniform(${min}, ${max}), ${decimals})`;
 }
 
-export function buildPythonSimulatorScript(template: DeviceTemplate, deviceId: string): string {
+export function buildPythonSimulatorScript(fields: TelemetryField[], deviceId: string): string {
   const lines: string[] = [];
   lines.push("#!/usr/bin/env python3");
   lines.push("# -*- coding: utf-8 -*-");
   lines.push("\n# Simulador de telemetría para Plataforma IoT");
-  lines.push("# Generado a partir de la plantilla seleccionada\n");
+  lines.push("# Generado a partir de las métricas definidas\n");
   lines.push("import json");
   lines.push("import time");
   lines.push("import random");
@@ -41,9 +51,9 @@ export function buildPythonSimulatorScript(template: DeviceTemplate, deviceId: s
   lines.push("DEFAULT_INTERVAL = 2  # segundos\n");
 
   lines.push("def build_sample():");
-  lines.push("    " + "# Construye una muestra de telemetría basada en la plantilla");
+  lines.push("    " + "# Construye una muestra de telemetría basada en las métricas definidas");
   lines.push("    sample = {}");
-  for (const prop of template.properties) {
+  for (const prop of fields) {
     const key = sanitizeName(prop.name);
     const valueExpr = pythonValueForProperty(prop);
     lines.push(`    sample['${key}'] = ${valueExpr}`);
@@ -61,7 +71,7 @@ export function buildPythonSimulatorScript(template: DeviceTemplate, deviceId: s
   lines.push("    device_id = args.device_id");
   lines.push("    topic = f'dispositivo/{device_id}/telemetria'\n");
 
-  lines.push("    client = mqtt.Client(client_id=f'simulator_{template.id}_{device_id}')");
+  lines.push("    client = mqtt.Client(client_id=f'simulator_${device_id}')");
   lines.push("    try:");
   lines.push("        client.connect(args.broker_host, args.broker_port, keepalive=60)");
   lines.push("        print(f'✓ Conectado al broker MQTT: {args.broker_host}:{args.broker_port}')");

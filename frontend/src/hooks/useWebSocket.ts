@@ -9,13 +9,27 @@ export const useWebSocket = (deviceId: string, token: string) => {
   const [wsClient, setWsClient] = useState<WebSocketClient | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [lastError, setLastError] = useState<string | null>(null);
+  const isPaused = (id: string) => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem(`simulator_paused:${id}`) === '1';
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
     if (!deviceId || !token) return;
 
     // Preferir entorno local por defecto; se puede sobrescribir vía NEXT_PUBLIC_WS_URL
     const client = new WebSocketClient(process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws");
-    client.connect(deviceId, token);
+    const paused = isPaused(deviceId);
+    if (!paused) {
+      client.connect(deviceId, token);
+    } else {
+      setStatus('disconnected');
+      setLastError('telemetry paused');
+    }
     setWsClient(client);
 
     const handleTelemetry = (data: TelemetryWebSocketMessage['data']) => {
@@ -33,7 +47,22 @@ export const useWebSocket = (deviceId: string, token: string) => {
     client.on("status", handleStatus);
     client.on("error", handleError);
 
+    const handleSimulatorToggle = (evt: any) => {
+      try {
+        const det = evt?.detail || {};
+        if (!det || det.deviceId !== deviceId) return;
+        if (det.paused) {
+          client.disconnect();
+        } else {
+          client.connect(deviceId, token);
+        }
+      } catch (_) {}
+    };
+
+    window.addEventListener('simulator-toggle', handleSimulatorToggle as any);
+
     return () => {
+      window.removeEventListener('simulator-toggle', handleSimulatorToggle as any);
       client.off("telemetry", handleTelemetry);
       client.off("status", handleStatus);
       client.off("error", handleError);

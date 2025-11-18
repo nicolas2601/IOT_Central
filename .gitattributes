@@ -1,0 +1,39 @@
+# Normalización de finales de línea sin cambiar el formato del código
+
+# Por defecto, código y configuraciones usan LF (Unix)
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.mjs  text eol=lf
+*.cjs  text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.scss text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.py   text eol=lf
+*.sh   text eol=lf
+*.toml text eol=lf
+*.tsconfig text eol=lf
+*.env  text eol=lf
+*.conf text eol=lf
+
+# Archivos de Windows (scripts) usan CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Archivos binarios: nunca convertir finales de línea
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
+
+# SVG y otros textos deben mantenerse como texto LF
+*.svg  text eol=lf
