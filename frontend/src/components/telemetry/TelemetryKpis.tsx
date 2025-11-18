@@ -20,22 +20,22 @@ export const TelemetryKpis: React.FC<TelemetryKpisProps> = ({ telemetryData }) =
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="rounded-xl p-4 bg-gradient-to-br from-blue-600/40 to-blue-800/30 border border-blue-500/40">
-        <div className="text-xs text-white/70">Eventos recibidos</div>
+      <div className="rounded-xl p-4 bg-linear-to-br from-blue-600/40 to-blue-800/30 border border-blue-500/40">
+        <div className="text-xs text-white/70 mb-1">📊 Eventos Recibidos</div>
         <div className="text-2xl font-semibold text-white">{formatNumber(total)}</div>
-        <div className="text-xs text-white/50">Últimos {Math.min(total, 100)} samples</div>
+        <div className="text-xs text-white/50 mt-1">Total de muestras en buffer</div>
       </div>
 
-      <div className="rounded-xl p-4 bg-gradient-to-br from-emerald-600/40 to-emerald-800/30 border border-emerald-500/40">
-        <div className="text-xs text-white/70">Botón de pánico</div>
+      <div className="rounded-xl p-4 bg-linear-to-br from-emerald-600/40 to-emerald-800/30 border border-emerald-500/40">
+        <div className="text-xs text-white/70 mb-1">🚨 Alertas de Pánico</div>
         <div className="text-2xl font-semibold text-white">{formatNumber(panicTrue)}</div>
-        <div className="text-xs text-white/50">Eventos con valor verdadero</div>
+        <div className="text-xs text-white/50 mt-1">Eventos con pánico activado</div>
       </div>
 
-      <div className="rounded-xl p-4 bg-gradient-to-br from-indigo-600/40 to-indigo-800/30 border border-indigo-500/40">
-        <div className="text-xs text-white/70">Última muestra</div>
+      <div className="rounded-xl p-4 bg-linear-to-br from-indigo-600/40 to-indigo-800/30 border border-indigo-500/40">
+        <div className="text-xs text-white/70 mb-1">⏱️ Última Muestra</div>
         <div className="text-sm font-medium text-white break-all">{lastTs ? String(lastTs) : "-"}</div>
-        <div className="text-xs text-white/50">Marca de tiempo del último evento</div>
+        <div className="text-xs text-white/50 mt-1">Timestamp del evento más reciente</div>
       </div>
     </div>
   );

@@ -66,8 +66,11 @@ export const DistributionChart: React.FC<DistributionChartProps> = ({ telemetryD
   const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
   return (
-    <div className="rounded-xl p-4 bg-gradient-to-br from-indigo-900/30 to-slate-900/30 border border-white/10">
-      <div className="text-sm text-white/80 mb-2">Distribución de métricas</div>
+    <div className="rounded-xl p-4 bg-linear-to-br from-indigo-900/30 to-slate-900/30 border border-white/10">
+      <div className="mb-3">
+        <div className="text-sm font-semibold text-white">📊 Gráfica de Dispersión</div>
+        <div className="text-xs text-white/60 mt-1">Muestra la relación entre 2 métricas. Cada punto representa una muestra. Útil para detectar correlaciones o patrones.</div>
+      </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>

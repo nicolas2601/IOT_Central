@@ -16,8 +16,11 @@ export const RadialPanicGauge: React.FC<RadialPanicGaugeProps> = ({ telemetryDat
   const data = [{ name: "Pánico", value }];
 
   return (
-    <div className="rounded-xl p-4 bg-gradient-to-br from-purple-900/30 to-slate-900/30 border border-white/10">
-      <div className="text-sm text-white/80 mb-2">Porcentaje de eventos con pánico</div>
+    <div className="rounded-xl p-4 bg-linear-to-br from-purple-900/30 to-slate-900/30 border border-white/10">
+      <div className="mb-3">
+        <div className="text-sm font-semibold text-white">🎯 Indicador de Pánico</div>
+        <div className="text-xs text-white/60 mt-1">Muestra qué porcentaje de eventos tienen el botón de pánico activado. Un valor alto indica muchas alertas.</div>
+      </div>
       <div className="h-56">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart innerRadius="50%" outerRadius="100%" data={data} startAngle={180} endAngle={0}>

@@ -85,8 +85,12 @@ export const MultiMetricComparison: React.FC<MultiMetricComparisonProps> = ({ te
   const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
   return (
-    <div className="rounded-xl p-4 bg-gradient-to-br from-cyan-900/30 to-slate-900/30 border border-white/10">
-      <div className="text-sm text-white/80 mb-2">Comparativa de métricas ({metrics.length} series)</div>
+    <div className="rounded-xl p-4 bg-linear-to-br from-cyan-900/30 to-slate-900/30 border border-white/10">
+      <div className="mb-3">
+        <div className="text-sm font-semibold text-white">🔄 Comparativa de Múltiples Métricas</div>
+        <div className="text-xs text-white/60 mt-1">Compara hasta 4 métricas simultáneamente. Cada color representa una métrica diferente. Útil para detectar correlaciones.</div>
+        <div className="text-xs text-white/50 mt-1">Mostrando {metrics.length} serie(s): {metrics.join(", ")}</div>
+      </div>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>

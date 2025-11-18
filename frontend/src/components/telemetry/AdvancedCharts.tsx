@@ -98,8 +98,11 @@ export const AdvancedCharts: React.FC<AdvancedChartsProps> = ({ telemetryData, s
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
       {/* Line/Area multiparámetro */}
-      <div className="rounded-xl p-4 bg-gradient-to-br from-blue-900/30 to-slate-900/30 border border-white/10">
-        <div className="text-sm text-white/80 mb-2">Series en tiempo reciente</div>
+      <div className="rounded-xl p-4 bg-linear-to-br from-blue-900/30 to-slate-900/30 border border-white/10">
+        <div className="mb-3">
+          <div className="text-sm font-semibold text-white">📈 Series en Tiempo Real</div>
+          <div className="text-xs text-white/60 mt-1">Visualiza cómo cambian las métricas seleccionadas en el tiempo. Cada línea representa una métrica diferente.</div>
+        </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             {metricKeys.length ? (
@@ -121,8 +124,11 @@ export const AdvancedCharts: React.FC<AdvancedChartsProps> = ({ telemetryData, s
       </div>
 
       {/* Conteo por minuto */}
-      <div className="rounded-xl p-4 bg-gradient-to-br from-indigo-900/30 to-slate-900/30 border border-white/10">
-        <div className="text-sm text-white/80 mb-2">Eventos por minuto</div>
+      <div className="rounded-xl p-4 bg-linear-to-br from-indigo-900/30 to-slate-900/30 border border-white/10">
+        <div className="mb-3">
+          <div className="text-sm font-semibold text-white">📊 Eventos por Minuto</div>
+          <div className="text-xs text-white/60 mt-1">Muestra cuántos eventos se recibieron en cada minuto. Útil para detectar patrones de actividad.</div>
+        </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={perMinute}>
@@ -137,8 +143,11 @@ export const AdvancedCharts: React.FC<AdvancedChartsProps> = ({ telemetryData, s
       </div>
 
       {/* Distribución de pánico */}
-      <div className="rounded-xl p-4 bg-gradient-to-br from-rose-900/30 to-slate-900/30 border border-white/10 xl:col-span-2">
-        <div className="text-sm text-white/80 mb-2">Distribución de botón de pánico</div>
+      <div className="rounded-xl p-4 bg-linear-to-br from-rose-900/30 to-slate-900/30 border border-white/10 xl:col-span-2">
+        <div className="mb-3">
+          <div className="text-sm font-semibold text-white">🚨 Distribución de Botón de Pánico</div>
+          <div className="text-xs text-white/60 mt-1">Muestra el porcentaje de eventos donde se activó el botón de pánico vs eventos normales. Útil para monitorear alertas de emergencia.</div>
+        </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>

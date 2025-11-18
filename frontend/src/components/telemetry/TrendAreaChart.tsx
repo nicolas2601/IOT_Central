@@ -76,8 +76,11 @@ export const TrendAreaChart: React.FC<TrendAreaChartProps> = ({ telemetryData })
   }
 
   return (
-    <div className="rounded-xl p-4 bg-gradient-to-br from-emerald-900/30 to-slate-900/30 border border-white/10">
-      <div className="text-sm text-white/80 mb-2">Tendencia de métrica principal</div>
+    <div className="rounded-xl p-4 bg-linear-to-br from-emerald-900/30 to-slate-900/30 border border-white/10">
+      <div className="mb-3">
+        <div className="text-sm font-semibold text-white">📈 Tendencia de Métrica Principal</div>
+        <div className="text-xs text-white/60 mt-1">Visualiza cómo evoluciona la métrica principal en el tiempo. El área sombreada facilita ver la tendencia general.</div>
+      </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>

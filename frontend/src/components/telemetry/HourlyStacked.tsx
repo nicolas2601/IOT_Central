@@ -23,8 +23,11 @@ export const HourlyStacked: React.FC<HourlyStackedProps> = ({ telemetryData }) =
   }, [telemetryData]);
 
   return (
-    <div className="rounded-xl p-4 bg-gradient-to-br from-sky-900/30 to-slate-900/30 border border-white/10">
-      <div className="text-sm text-white/80 mb-2">Eventos por hora (pánico vs normal)</div>
+    <div className="rounded-xl p-4 bg-linear-to-br from-sky-900/30 to-slate-900/30 border border-white/10">
+      <div className="mb-3">
+        <div className="text-sm font-semibold text-white">⏰ Eventos por Hora</div>
+        <div className="text-xs text-white/60 mt-1">Distribuye los eventos en barras apiladas por hora. Rojo = pánico, Verde = normal. Detecta patrones de actividad.</div>
+      </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} stackOffset="expand">
