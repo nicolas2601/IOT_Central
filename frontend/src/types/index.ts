@@ -149,7 +149,7 @@ export interface CommandCreateData {
 // ============================================
 // TIPOS DE ALERTAS
 // ============================================
-
+//"HOLA"
 export type RuleType = 'threshold' | 'range' | 'change' | 'offline';
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 
